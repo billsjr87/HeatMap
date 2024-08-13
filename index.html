@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Micro Targeting</title>
+    <script type="text/javascript" src="Resources/js/configs.js"></script>
+    <script type="text/javascript" src="Resources/js/GeoJson.js"></script>
+</head>
+
+<body class="bg-secondary bg-gradient">
+    <div class="container-fluid vh-100 vw-100 d-flex flex-column p-4">
+        <!-- filters section -->
+        <div class="row flex-shrink-1 px-2 pb-4">
+            <div class="column d-flex flex-row justify-content-start">
+                <div class="btn-group mx-2">
+                    <button class="btn btn-light dropdown-toggle" type="button" id="dropdownMenuCategory"
+                        data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
+                        Category
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="dropdownMenuCategory" id="categoryItem">
+                        <li><a class="dropdown-item" href="#">Menu item</a></li>
+                        <li><a class="dropdown-item" href="#">Menu item</a></li>
+                        <li><a class="dropdown-item" href="#">Menu item</a></li>
+                    </ul>
+                </div>
+                <div class="btn-group mx-2">
+                    <button class="btn btn-light dropdown-toggle" type="button" id="dropdownMenuCategorySquare"
+                        data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
+                        Category Square
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="dropdownMenuCategorySquare" id="squareCategoryItem">
+                        <li><a class="dropdown-item" href="#">Menu item</a></li>
+                        <li><a class="dropdown-item" href="#">Menu item</a></li>
+                        <li><a class="dropdown-item" href="#">Menu item</a></li>
+                    </ul>
+                </div>
+                <div class="btn-group mx-2">
+                    <button class="btn btn-light dropdown-toggle" type="button" id="dropdownMenuSquareSegmentation"
+                        data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
+                        Square Segmentation
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="dropdownMenuSquareSegmentation" id="squareSegmentItem">
+                        <li><a class="dropdown-item" href="#">Menu item</a></li>
+                        <li><a class="dropdown-item" href="#">Menu item</a></li>
+                        <li><a class="dropdown-item" href="#">Menu item</a></li>
+                    </ul>
+                </div>
+                <div class="btn-group mx-2">
+                    <button class="btn btn-light dropdown-toggle" type="button" id="dropdownMenuCluster"
+                        data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
+                        Region/Cluster/Sub Cluster
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="dropdownMenuCluster" id="clusterItem">
+                        <li><a class="dropdown-item" href="#">Menu item</a></li>
+                        <li><a class="dropdown-item" href="#">Menu item</a></li>
+                        <li><a class="dropdown-item" href="#">Menu item</a></li>
+                    </ul>
+                </div>
+                <div class="btn-group mx-2">
+                    <button class="btn btn-light dropdown-toggle" type="button" id="dropdownMenuChannel"
+                        data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
+                        Channel
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="dropdownMenuChannel" id="channelItem">
+                        <li><a class="dropdown-item" href="#">Menu item</a></li>
+                        <li><a class="dropdown-item" href="#">Menu item</a></li>
+                        <li><a class="dropdown-item" href="#">Menu item</a></li>
+                    </ul>
+                </div>
+                <div class="btn-group mx-2">
+                    <button class="btn btn-light dropdown-toggle" type="button" id="dropdownMenuBrand"
+                        data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
+                        Brand/SKU
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="dropdownMenuBrand" id="brandItem">
+                        <li><a class="dropdown-item" href="#">Menu item</a></li>
+                        <li><a class="dropdown-item" href="#">Menu item</a></li>
+                        <li><a class="dropdown-item" href="#">Menu item</a></li>
+                    </ul>
+                </div>
+                <div class="btn-group mx-2">
+                    <button class="btn btn-light dropdown-toggle" type="button" id="dropdownMenuSquare"
+                        data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
+                        Square ID
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="dropdownMenuSquare" id="squareItem">
+                        <li><a class="dropdown-item" href="#">Menu item</a></li>
+                        <li><a class="dropdown-item" href="#">Menu item</a></li>
+                        <li><a class="dropdown-item" href="#">Menu item</a></li>
+                    </ul>
+                </div>
+            </div>
+
+
+        </div>
+
+        <!-- main content sections -->
+        <div class="row flex-grow-1 px-2">
+
+            <!-- map section -->
+            <div class="col-5 border" id="map"></div>
+
+            <!-- data sections -->
+            <div class="col-7 ps-4 d-flex flex-column">
+                <!-- data summary section -->
+                <div class="row flex-grow-1 pb-2">
+                    <div class="col d-flex flex-column bg-light">
+                        <div class="row flex-shrink-1 p-2">
+                            <div class="text-center h3 flex-grow-1">Volume Sales</div>
+                        </div>
+                        <div class="row flex-grow-1"></div>
+                        <div class="row flex-grow-1"></div>
+                    </div>
+                    <div class="col d-flex flex-column bg-light mx-2">
+                        <div class="row flex-shrink-1 p-2">
+                            <div class="text-center h3 flex-grow-1">Stock Condition</div>
+                        </div>
+                        <div class="row flex-grow-1"></div>
+                    </div>
+                    <div class="col d-flex flex-column bg-light">
+                        <div class="row flex-shrink-1 p-2">
+                            <div class="text-center h3 flex-grow-1">Distribution</div>
+                        </div>
+                        <div class="row flex-grow-1"></div>
+                        <div class="row flex-grow-1"></div>
+                    </div>
+                </div>
+                <!-- data detail section -->
+                <div class="row flex-grow-1 pt-2 px-2">
+                    <div class="col p-2 bg-light">
+                        <nav aria-label="...">
+                            <ul class="pagination pagination-sm">
+                                <li class="page-item active" aria-current="page">
+                                    <span class="page-link">1</span>
+                                </li>
+                                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                            </ul>
+                        </nav>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>/** FUNCTIONS **/
+        async function loadScript(src, elm) {
+            try {
+                let script;
+                switch (elm) {
+                    case 1:
+                        script = document.createElement('script');
+                        script.type = 'text/javascript';
+                        script.src = src;
+                        break;
+                    case 2:
+                        script = document.createElement('link');
+                        script.rel = "stylesheet";
+                        script.type = "text/css";
+                        script.href = src;
+                        break;
+                    case 3:
+                        script = document.createElement('link');
+                        script.rel = "icon";
+                        script.type = "image/png";
+                        script.href = src;
+                        break;
+                    default: console.error('script not defined.');
+                }
+                await document.head.appendChild(script);
+            } catch (err) {
+                console.error('Script failed to load: ' + err.message);
+            }
+        }
+
+        async function loadData(callback) {
+            try {
+                // load workplace boundary shp file
+                geoWorkplace = await shp(
+                    siteConfig.siteAddress +
+                    siteConfig.siteMainFolder +
+                    siteConfig.siteDataFolder +
+                    dataSource._shp.wpBoundary
+                );
+                // load square boundary shp file
+                geoSquare = await shp(
+                    siteConfig.siteAddress +
+                    siteConfig.siteMainFolder +
+                    siteConfig.siteDataFolder +
+                    dataSource._shp.sqBoundary +
+                    dataSource._shp.sqBoundaries.javanusa
+                );
+                geoIdm = await loadDataToArray(
+                    siteConfig.siteAddress +
+                    siteConfig.siteMainFolder +
+                    siteConfig.siteDataFolder +
+                    dataSource._point.idmPoint
+                    , 'xlsx', 'Average_of_Latitude', 'Average_of_Longitude');
+                geoPoi = await loadDataToArray(
+                    siteConfig.siteAddress +
+                    siteConfig.siteMainFolder +
+                    siteConfig.siteDataFolder +
+                    dataSource._point.poiPoint
+                    , 'csv');
+                geoBillboard = await loadDataToArray(
+                    siteConfig.siteAddress +
+                    siteConfig.siteMainFolder +
+                    siteConfig.siteDataFolder +
+                    dataSource._point.billboardPoint
+                    , 'xlsx', 'Lat', 'Lng');
+                geoJTI = await loadDataToArray(
+                    siteConfig.siteAddress +
+                    siteConfig.siteMainFolder +
+                    siteConfig.siteDataFolder +
+                    dataSource._point.jtiPoint
+                    , 'xlsx', 'szlatitude', 'szlongitude');
+                callback();
+            } catch (err) {
+                console.error('Data failed to load: ' + err.message);
+            }
+        }
+
+        async function initMapVisual(callback) {
+            try {
+                // Workplace Boundary Layer
+                layerWorkplaceBoundary = new google.maps.Data({ map: map });
+                layerWorkplaceBoundary.addGeoJson(geoWorkplace);
+                layerWorkplaceBoundary.setStyle(function (feature) {
+                    return {
+                        fillColor: "gray",
+                        fillOpacity: 0.0,
+                        strokeColor: "black",
+                        strokeWeight: 1.0,
+                        zIndex: 10,
+                    };
+                });
+
+                // Square Boundary Layer
+                layerSquareBoundary = new google.maps.Data({ map: map });
+                layerSquareBoundary.addGeoJson(geoSquare);
+                layerSquareBoundary.setStyle(function (feature) {
+                    var segment = feature.getProperty(siteConfig.squareSegmentProperty);
+                    var color;
+                    var fillOp = 0.6;
+                    switch (segment) {
+                        case "WIN":
+                            color = siteConfig.colorWin;
+                            break;
+                        case "TACTICAL":
+                            color = siteConfig.colorTactical;
+                            break;
+                        case "SUSTAIN":
+                            color = siteConfig.colorSustain;
+                            break;
+                        case "NON-INVESTABLE":
+                            color = siteConfig.colorNI;
+                            break;
+                        case "EXPAND":
+                            color = siteConfig.colorExpand;
+                            break;
+                        default:
+                            color = 'gray';
+                            fillOp = 0.2;
+                            break;
+                    }
+                    return {
+                        fillColor: color,
+                        fillOpacity: fillOp,
+                        strokeWeight: 0.1,
+                        zIndex: 20,
+                    };
+                });
+
+                layerSquareBoundary.addListener('click', (event) => {
+                    onClickFunction(event.feature, 1);
+                });
+
+                // IDM Layer
+                layerIdm = new google.maps.Data({ map: map });
+                layerIdm.addGeoJson(geoIdm);
+                layerIdm.setStyle({
+                    icon: siteConfig.siteResourceFolder.icon +
+                        dataSource._icon.idmIcon,
+                    opacity: 1,
+                    zIndex: 30,
+                });
+                layerSquareBoundary.addListener('click', (event) => {
+                    onClickFunction(event.feature, 2);
+                });
+
+                // POI Layer
+                layerPoi = new google.maps.Data({ map: map });
+                layerPoi.addGeoJson(geoPoi);
+                layerPoi.setStyle({
+                    icon: siteConfig.siteResourceFolder.icon +
+                        dataSource._icon.poiIcon,
+                    opacity: 1,
+                    zIndex: 40,
+                });
+
+                layerBillboard = new google.maps.Data({ map: map });
+                layerBillboard.addGeoJson(geoBillboard);
+                layerBillboard.setStyle({
+                    icon: siteConfig.siteResourceFolder.icon +
+                        dataSource._icon.billboardIcon,
+                    opacity: 1,
+                    zIndex: 50,
+                });
+
+                layerJTI = new google.maps.Data({ map: map });
+                layerJTI.addGeoJson(geoJTI);
+                layerJTI.setStyle({
+                    icon: siteConfig.siteResourceFolder.icon +
+                        dataSource._icon.jtiIcon,
+                    opacity: 1,
+                    zIndex: 60,
+                });
+                layerJTI.addListener('click', (event) => {
+                    onClickFunction(event.feature, 2);
+                });
+
+                layerJTIStatus = filterVisual(layerJTI, layerJTIStatus);
+                layerIdmStatus = filterVisual(layerIdm, layerIdmStatus);
+                layerPoiStatus = filterVisual(layerPoi, layerPoiStatus);
+                layerBillboardStatus = filterVisual(layerBillboard, layerBillboardStatus);
+
+                callback();
+            } catch (err) {
+                console.error('Map visual failed to load: ' + err.message);
+            }
+        }
+
+        function initFilter() {
+            // Square segment filter
+            // Get array of segmentation from layerSquareBoundary
+            elmSquareSegmentFilter.innerHTML = ''; // clear out html element
+            layerSquareBoundary.forEach(feature => {
+                var temp = feature.getProperty(siteConfig.squareSegmentProperty);
+                if (squareSegmentationFilter.length != 0 && squareSegmentationFilter.includes(temp)) {
+                    return;
+                } else {
+                    squareSegmentationFilter.push(temp);
+                }
+            });
+            // sort squareSegmentationFilter in alphabetical order
+            squareSegmentationFilter.sort();
+            // create elements for each item in array
+            var elmListSqSegNode;
+            squareSegmentationFilter.forEach(item => {
+                elmListSqSegNode = document.createElement('li');
+                var elmLinkNode = document.createElement('a');
+
+                var elmText;
+                elmLinkNode.setAttribute('class', 'dropdown-item'); // set attribute for a
+                elmLinkNode.setAttribute('href', '#'); // set attribute for a
+                elmLinkNode.setAttribute('id', item);
+                elmText = document.createTextNode(item);
+                elmLinkNode.addEventListener("click", (event) => {
+                    layerSquareBoundary.revertStyle();
+                    overrideSegmentStyle(event.target.id, 0);
+                });
+                elmLinkNode.appendChild(elmText);
+                elmListSqSegNode.appendChild(elmLinkNode);
+                elmSquareSegmentFilter.appendChild(elmListSqSegNode);
+            });
+            // empty the element and add prepared node
+
+            // Square ID filter
+            elmSquareIdFilter.innerHTML = '';
+            elmSquareIdFilter.setAttribute('style', 'max-height: 400px; overflow-y: auto;')
+            layerSquareBoundary.forEach(feature => {
+                var temp = feature.getProperty(siteConfig.squareIdProperty);
+                if (squareIdFilter.length != 0 && squareIdFilter.includes(temp)) {
+                    return;
+                } else {
+                    squareIdFilter.push(temp);
+                }
+            });
+            squareIdFilter.sort();
+
+            var elmListSqIdNode;
+            squareIdFilter.forEach(item => {
+                elmListSqIdNode = document.createElement('li');
+                var elmLinkNode = document.createElement('a');
+                var elmText;
+                elmLinkNode.setAttribute('class', 'dropdown-item'); // set attribute for a
+                elmLinkNode.setAttribute('href', '#'); // set attribute for a
+                elmLinkNode.setAttribute('id', item);
+                elmText = document.createTextNode(item);
+                elmLinkNode.appendChild(elmText);
+                elmListSqIdNode.appendChild(elmLinkNode);
+                elmSquareIdFilter.appendChild(elmListSqIdNode);
+                elmLinkNode.addEventListener("click", (event) => {
+                    layerSquareBoundary.revertStyle();
+                    overrideSegmentStyle(event.target.id, 1);
+                });
+            });
+
+
+            elmSquareCategoryFilter.innerHTML = ''; // clear out html element
+            layerSquareBoundary.forEach(feature => {
+                var temp = feature.getProperty(siteConfig.squareCategoryProperty);
+                if (squareCategoryFilter.length != 0 && squareCategoryFilter.includes(temp)) {
+                    return;
+                } else {
+                    squareCategoryFilter.push(temp);
+                }
+            });
+            // sort squareSegmentationFilter in alphabetical order
+            squareCategoryFilter.sort();
+            // create elements for each item in array
+            var elmListSqCatNode;
+            squareCategoryFilter.forEach(item => {
+                elmListSqCatNode = document.createElement('li');
+                var elmLinkNode = document.createElement('a');
+
+                var elmText;
+                elmLinkNode.setAttribute('class', 'dropdown-item'); // set attribute for a
+                elmLinkNode.setAttribute('href', '#'); // set attribute for a
+                elmLinkNode.setAttribute('id', item);
+                elmText = document.createTextNode(item);
+                elmLinkNode.addEventListener("click", (event) => {
+                    layerSquareBoundary.revertStyle();
+                    overrideSegmentStyle(event.target.id, 2);
+                });
+                elmLinkNode.appendChild(elmText);
+                elmListSqCatNode.appendChild(elmLinkNode);
+                elmSquareCategoryFilter.appendChild(elmListSqCatNode);
+            });
+
+        }
+
+        function initCustomControl() {
+            const eyeIcon = siteConfig.siteResourceFolder.icon + '/ic_fluent_eye_show_24_filled.ico';
+            const eyeIconClosed = siteConfig.siteResourceFolder.icon + '/ic_fluent_eye_hide_24_filled.ico';
+
+            const rightTopControlDiv = document.createElement("div");
+
+            const controlButton = document.createElement("button");
+
+            controlButton.style.backgroundColor = "#fff";
+            controlButton.style.border = "2px solid #fff";
+            controlButton.style.borderRadius = "3px";
+            controlButton.style.boxShadow = "0 2px 6px rgba(0,0,0,.3)";
+            controlButton.style.color = "rgb(25,25,25)";
+            controlButton.style.cursor = "pointer";
+            controlButton.style.fontFamily = "Roboto,Arial,sans-serif";
+            controlButton.style.fontSize = "16px";
+            controlButton.style.lineHeight = "38px";
+            controlButton.style.margin = "8px 8px 8px 8px";
+            controlButton.style.padding = "0 5px";
+            controlButton.style.textAlign = "center";
+
+            controlButton.setAttribute('class', 'dropdown-toggle');
+            controlButton.setAttribute('data-bs-toggle', 'dropdown');
+            controlButton.setAttribute('data-bs-auto-close', 'true');
+            controlButton.setAttribute('aria-expanded', 'false');
+            controlButton.id = 'mapDropdown';
+
+            controlButton.innerHTML = '<img src="' + siteConfig.siteResourceFolder.icon + '/ic_fluent_layer_24_regular.ico"></i>';
+            controlButton.title = "Click to open filters";
+            controlButton.type = "button";
+
+            const ulElm = document.createElement('ul');
+            ulElm.setAttribute('class', 'dropdown-menu');
+            ulElm.setAttribute('aria-labelledby', 'mapDropdown');
+
+            const elmLiSquare = document.createElement('li');
+            elmLiSquare.id = 'square';
+            const elmASquare = document.createElement('a');
+            elmASquare.setAttribute('class', 'dropdown-item');
+            var iconSq = layerSquareBoundaryStatus ? eyeIcon : eyeIconClosed;
+            elmASquare.innerHTML = '<img src="' + iconSq + '"></i> Square';
+            elmASquare.addEventListener("click", (event) => {
+                layerSquareBoundaryStatus = filterVisual(layerSquareBoundary, layerSquareBoundaryStatus);
+                iconSq = layerSquareBoundaryStatus ? eyeIcon : eyeIconClosed;
+                elmASquare.innerHTML = '<img src="' + iconSq + '"></i> Square';
+            });
+            elmLiSquare.appendChild(elmASquare);
+            ulElm.appendChild(elmLiSquare);
+
+            const elmLiJTI = document.createElement('li');
+            elmLiJTI.id = 'jti';
+            const elmAJTI = document.createElement('a');
+            elmAJTI.setAttribute('class', 'dropdown-item');
+            var iconJTI = layerWorkplaceBoundaryStatus ? eyeIcon : eyeIconClosed;
+            elmAJTI.innerHTML = '<img src="' + iconJTI + '"></i> JTI Coverage';
+            elmAJTI.addEventListener("click", (event) => {
+                layerWorkplaceBoundaryStatus = filterVisual(layerWorkplaceBoundary, layerWorkplaceBoundaryStatus);
+                iconJTI = layerWorkplaceBoundaryStatus ? eyeIcon : eyeIconClosed;
+                elmAJTI.innerHTML = '<img src="' + iconJTI + '"></i> JTI Coverage';
+            });
+            elmLiJTI.appendChild(elmAJTI);
+            ulElm.appendChild(elmLiJTI);
+
+            const elmLiJTIStore = document.createElement('li');
+            elmLiJTIStore.id = 'jtiStore';
+            const elmAJTIStore = document.createElement('a');
+            elmAJTIStore.setAttribute('class', 'dropdown-item');
+            var iconJTIStore = layerJTIStatus ? eyeIcon : eyeIconClosed;
+            elmAJTIStore.innerHTML = '<img src="' + iconJTIStore + '"></i> JTI Store';
+            elmAJTIStore.addEventListener("click", (event) => {
+                layerJTIStatus = filterVisual(layerJTI, layerJTIStatus);
+                iconJTIStore = layerJTIStatus ? eyeIcon : eyeIconClosed;
+                elmAJTIStore.innerHTML = '<img src="' + iconJTIStore + '"></i> JTI Store';
+            });
+            elmLiJTIStore.appendChild(elmAJTIStore);
+            ulElm.appendChild(elmLiJTIStore);
+
+            const elmLiIDMStore = document.createElement('li');
+            elmLiIDMStore.id = 'idmStore';
+            const elmAIDMStore = document.createElement('a');
+            elmAIDMStore.setAttribute('class', 'dropdown-item');
+            var iconIDMStore = layerIdmStatus ? eyeIcon : eyeIconClosed;
+            elmAIDMStore.innerHTML = '<img src="' + iconIDMStore + '"></i> IDM Store';
+            elmAIDMStore.addEventListener("click", (event) => {
+                layerIdmStatus = filterVisual(layerIdm, layerIdmStatus);
+                iconIDMStore = layerIdmStatus ? eyeIcon : eyeIconClosed;
+                elmAIDMStore.innerHTML = '<img src="' + iconIDMStore + '"></i> IDM Store';
+            });
+            elmLiIDMStore.appendChild(elmAIDMStore);
+            ulElm.appendChild(elmLiIDMStore);
+
+            const elmLiPoi = document.createElement('li');
+            elmLiPoi.id = 'poi';
+            const elmAPoi = document.createElement('a');
+            elmAPoi.setAttribute('class', 'dropdown-item');
+            var iconPOI = layerPoiStatus ? eyeIcon : eyeIconClosed;
+            elmAPoi.innerHTML = '<img src="' + iconPOI + '"></i> POI';
+            elmAPoi.addEventListener("click", (event) => {
+                layerPoiStatus = filterVisual(layerPoi, layerPoiStatus);
+                iconPOI = layerPoiStatus ? eyeIcon : eyeIconClosed;
+                elmAPoi.innerHTML = '<img src="' + iconPOI + '"></i> POI';
+            });
+            elmLiPoi.appendChild(elmAPoi);
+            ulElm.appendChild(elmLiPoi);
+
+            const elmLiBill = document.createElement('li');
+            elmLiBill.id = 'billboard';
+            const elmABill = document.createElement('a');
+            elmABill.setAttribute('class', 'dropdown-item');
+            var iconBillboard = layerBillboardStatus ? eyeIcon : eyeIconClosed;
+            elmABill.innerHTML = '<img src="' + iconBillboard + '"></i> Billboard';
+            elmABill.addEventListener("click", (event) => {
+                layerBillboardStatus = filterVisual(layerBillboard, layerBillboardStatus);
+                iconBillboard = layerBillboardStatus ? eyeIcon : eyeIconClosed;
+                elmABill.innerHTML = '<img src="' + iconBillboard + '"></i> Billboard';
+            });
+            elmLiBill.appendChild(elmABill);
+            ulElm.appendChild(elmLiBill);
+
+            rightTopControlDiv.appendChild(controlButton);
+            rightTopControlDiv.appendChild(ulElm);
+
+            return rightTopControlDiv;
+        }
+
+        function overrideSegmentStyle(elmId, type) {
+            // memfilter square based on segement id EXPAND, TACTICAL, WIN, SUSTAIN, NON-INVESTABLE
+            layerSquareBoundary.forEach(feature => {
+                switch (type) {
+                    case 0:
+                        var segment = feature.getProperty(siteConfig.squareSegmentProperty);
+                        if (segment == elmId) {
+                            layerSquareBoundary.overrideStyle(feature, {
+                                strokeColor: 'yellow',
+                                strokeWeight: 2.0,
+                                fillOpacity: 1.0,
+                            });
+                        }
+                        break;
+                    case 1:
+                        var segment = feature.getProperty(siteConfig.squareIdProperty);
+                        if (segment == elmId) {
+                            layerSquareBoundary.overrideStyle(feature, {
+                                strokeColor: 'yellow',
+                                strokeWeight: 2.0,
+                                fillOpacity: 1.0,
+                            });
+                        }
+                        break;
+                    case 2:
+                        var segment = feature.getProperty(siteConfig.squareCategoryProperty);
+                        if (segment == elmId) {
+                            layerSquareBoundary.overrideStyle(feature, {
+                                strokeColor: 'yellow',
+                                strokeWeight: 2.0,
+                                fillOpacity: 1.0,
+                            });
+                        }
+                        break;
+                    default:
+                        break;
+                }
+
+            });
+
+        }
+
+        function onClickFunction(feature, type) {
+            let table = document.createElement('table');
+            let header = document.createElement('thead');
+            let body = document.createElement('tbody');
+            const contentString =
+                '<table>' +
+                // table header
+                '<thead>' +
+                '<tr>' +
+                '<th colspan="2">Header 1</th>' +
+                '</tr>' +
+                '</thead>' +
+                '<tbody>' +
+                // 1st row
+                '<tr>' +
+                '<td></td>' +
+                '<td></td>' +
+                '</tr>' +
+                // 2nd row
+                '<tr>' +
+                '<td></td>' +
+                '<td></td>' +
+                '</tr>' +
+
+                '<tr>' +
+                '<td></td>' +
+                '<td></td>' +
+                '</tr>' +
+                '<tr>' +
+                '<td></td>' +
+                '<td></td>' +
+                '</tr>' +
+                '</tbody>' +
+                '</table>';
+
+            const infowindow = new google.maps.InfoWindow({ content: contentString, });
+            if (type == 1 && feature.getGeometry().getType() == 'Polygon') {
+                infowindow.setPosition(feature.getGeometry().getAt(0).getAt(0));
+                infowindow.open(map);
+            } else if (type == 2 && feature.getGeometry().getType() == 'Point') {
+                infowindow.setPosition(feature.getGeometry().get());
+                infowindow.open(map);
+            }
+        }
+
+        function filterVisual(layer, status) {
+            layer.forEach(feature => {
+                layer.overrideStyle(feature, {
+                    visible: !status,
+                });
+            });
+            return !status;
+        }
+
+    </script>
+
+    <script>/** ADDTIONAL FUNCTIONS **/
+        async function loadDataToArray(fileLoc, fileType, lat = "Latitude", lng = "Longitude") {
+            if (fileType && fileType == 'xlsx') {
+                async function loadXlsxFile(fileLoc) {
+                    const file = await (await fetch(fileLoc)).arrayBuffer();
+                    var workbook = XLSX.readFile(file);
+                    var sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    var rowObject = XLSX.utils.sheet_to_row_object_array(sheet);
+                    return rowObject;
+                }
+                return convertToGeoJsonFromArray(await loadXlsxFile(fileLoc), lat, lng);
+            } else {
+                let response = $.ajax({
+                    url: fileLoc,
+                    async: false,
+                    dataType: "text",
+                });
+                if (response.status == 200) {
+                    switch (fileType) {
+                        case 'csv':
+                            return responseTextToGeoJson(response.responseText);
+                            break;
+
+                        default:
+                            return stringToArray(response.responseText);
+                            break;
+                    }
+                } else {
+                    return false;
+                }
+            }
+
+            /** PARSE ARRAY TO GEOJSON **/
+            function convertToGeoJsonFromArray(array, latitude = "Latitude", longitude = "Longitude") {
+                var output = {}
+                output['type'] = 'FeatureCollection'
+                var temp_array = []
+                array.forEach(item => {
+                    var temp = {}
+                    temp['type'] = 'Feature'
+                    temp['geometry'] = { "type": "Point", "coordinates": [item[longitude], item[latitude]] }
+                    temp['properties'] = item
+                    temp_array.push(temp)
+                })
+                output['features'] = temp_array;
+                return output;
+            }
+
+            /* PARSE AJAX RESPONSE TEXT TO GEOJSON */
+            function responseTextToGeoJson(data, latColumnName = "Latitude", longColumnName = "Longitude", type = 1) {
+                var csvObject = Papa.parse(data.trim(), { dynamicTyping: true }).data;
+                return GeoJSON.parse(
+                    latLonColumnsToNumbers(massageData(csvObject), latColumnName, longColumnName),
+                    {
+                        Point: [latColumnName, longColumnName],
+                    }
+                );
+
+            }
+
+            /* TRANSFORM CSV TO ARRAY FOR GEOJSON */
+            function massageData(text) {
+                if (!text || !text.length) return null;
+                var firstRow = text[0];
+                var map = text.map(function (item) {
+                    var returnItem = {},
+                        i = 0;
+                    firstRow.forEach(function (columnName) {
+                        returnItem[columnName] = item[i++];
+                    });
+                    return returnItem;
+                });
+                map.shift();
+                return map;
+            }
+
+            /* GEO JSON CONVERSION FUNCTION */
+            function latLonColumnsToNumbers(data, latName, lonName) {
+                return data.map(function (item) {
+                    if (Object.hasOwn(item, "latname")) {
+                        item[latName] = parseFloat(item[latName]);
+                    }
+                    if (Object.hasOwn(item, "lonName")) {
+                        item[lonName] = parseFloat(item[lonName]);
+                    }
+                    return item;
+                });
+            }
+
+            /* PARSE PLAIN TEXT RESPONSE TO ARRAY */
+            function stringToArray(text) {
+                let lines = text.split(/(?:\r\n|\n)+/).filter(function (el) { return el.length != 0 });
+                let headers = lines.splice(0, 1)[0].split(csvDelimiter);
+                let elements = [];
+                for (var i = 0; i < lines.length; i++) {
+                    let element = {};
+                    let j = 0;
+                    if (lines[i].match("\".*\"")) {
+                        var value = lines[i].split(/((?:[^",]|(?:"(?:\\{2}|\\"|[^"])*?"))*)/g);
+                        value = value.filter(a => a != ",");
+                        value.shift();
+                        for (var y = 0; y < headers.length; y++) {
+                            if (value[y]) {
+                                if (value[y].includes('\"\"')) {
+                                    value[y] = value[y].replace(/\"\"/g, '');
+                                }
+                            }
+                            element[headers[j]] = value[y];
+                            j++;
+                        }
+                    } else {
+                        var value = lines[i].split(csvDelimiter);
+                        for (var y = 0; y < headers.length; y++) {
+                            element[headers[j]] = value[y];
+                            j++;
+                        }
+                    }
+                    elements.push(element);
+                }
+                return elements;
+            }
+
+        }
+
+    </script>
+
+    <script>/** Load Google Maps API **/
+
+        (g => { var h, a, k, p = "The Google Maps JavaScript API", c = "google", l = "importLibrary", q = "__ib__", m = document, b = window; b = b[c] || (b[c] = {}); var d = b.maps || (b.maps = {}), r = new Set, e = new URLSearchParams, u = () => h || (h = new Promise(async (f, n) => { await (a = m.createElement("script")); e.set("libraries", [...r] + ""); for (k in g) e.set(k.replace(/[A-Z]/g, t => "_" + t[0].toLowerCase()), g[k]); e.set("callback", c + ".maps." + q); a.src = `https://maps.${c}apis.com/maps/api/js?` + e; d[q] = f; a.onerror = () => h = n(Error(p + " could not load.")); a.nonce = m.querySelector("script[nonce]")?.nonce || ""; m.head.append(a) })); d[l] ? console.warn(p + " only loads once. Ignoring:", g) : d[l] = (f, ...n) => r.add(f) && u().then(() => d[l](f, ...n)) })({
+            key: mapConfig.API_KEY,
+            v: "weekly",
+            // Use the 'v' parameter to indicate the version to use (weekly, beta, alpha, etc.).
+            // Add other bootstrap parameters as needed, using camel case.
+        });
+
+        async function initMap(callback) {
+            // The location of Uluru
+            const position = { lat: -25.344, lng: 131.031 };
+            // Request needed libraries.
+            //@ts-ignore
+            const { Map } = await google.maps.importLibrary("maps");
+            const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+
+            // The map, centered at Uluru
+            map = new Map(document.getElementById("map"), {
+                zoom: 10,
+                center: { lat: mapConfig.COUNTRY_CENTER.latitude, lng: mapConfig.COUNTRY_CENTER.longitude },
+                // mapId: "DEMO_MAP_ID",
+                restriction: {
+                    latLngBounds: mapConfig.COUNTRY_BOUNDS,
+                    strictBounds: false,
+                },
+            });
+
+            callback();
+        }
+    </script>
+
+    <script>/** MAIN SCRIPT **/
+
+        // Add additional scripts to HTML header
+        loadScript(siteConfig.siteResourceFolder.icon + '/min_logo-route-final-01.ico', 3);
+        loadScript(siteConfig.siteResourceFolder.stylesheet + '/bootstrap.min.css', 2);
+        loadScript(siteConfig.siteResourceFolder.javascript + '/bootstrap.bundle.min.js', 1);
+        loadScript(siteConfig.siteResourceFolder.javascript + '/jquery.min.js', 1);
+        loadScript(siteConfig.siteResourceFolder.javascript + '/shp.js', 1);
+        loadScript(siteConfig.siteResourceFolder.javascript + '/GeoJson.js', 1);
+        loadScript(siteConfig.siteResourceFolder.javascript + '/papaparse.min.js', 1);
+        loadScript(siteConfig.siteResourceFolder.javascript + '/xlsx.full.min.js', 1);
+
+        // Init variables
+        let map;
+        let geoWorkplace;
+        let layerWorkplaceBoundary;
+        let layerWorkplaceBoundaryStatus = true;
+        let geoSquare;
+        let layerSquareBoundary;
+        let layerSquareBoundaryStatus = true;
+        let geoPoi;
+        let layerPoi;
+        let layerPoiStatus = true;
+        let geoIdm;
+        let layerIdm;
+        let layerIdmStatus = true;
+        let geoBillboard;
+        let layerBillboard;
+        let layerBillboardStatus = true;
+        let geoJTI;
+        let layerJTI;
+        let layerJTIStatus = true;
+
+        let squareSegmentationFilter = new Array();
+        let elmSquareSegmentFilter = document.getElementById('squareSegmentItem');
+        let squareIdFilter = new Array();
+        let elmSquareIdFilter = document.getElementById('squareItem');
+        let squareCategoryFilter = new Array();
+        let elmSquareCategoryFilter = document.getElementById('squareCategoryItem');
+
+        // Functions call 
+        initMap(function () {
+            loadData(function () {
+                initMapVisual(function () {
+                    initFilter();
+
+                    const customControl = initCustomControl();
+                    map.controls[google.maps.ControlPosition.RIGHT_TOP].push(customControl);
+
+                    map.addListener('zoom_changed', (e) => {
+                        console.log(map.getZoom());
+                        if (map.getZoom() >= 16) {
+
+                        } else {
+
+                        }
+                    });
+                });
+
+            });
+        });
+
+
+    </script>
+
+</body>
+
+</html>
