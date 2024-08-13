@@ -21,6 +21,7 @@ const siteConfig = {
   squareSegmentProperty: 'Square',
   squareIdProperty: 'Square_C_1',
   squareCategoryProperty: 'Segment',
+  bosnetCustCategory: 'szcategory_2',
   colorWin: '#87C498',
   colorExpand: '#96C0D6',
   colorSustain: '#FFEEBD',

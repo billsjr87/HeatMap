@@ -288,7 +288,7 @@
                     zIndex: 30,
                 });
                 layerSquareBoundary.addListener('click', (event) => {
-                    onClickFunction(event.feature, 2);
+                    onClickFunction(event.feature, 3);
                 });
 
                 // POI Layer
@@ -604,44 +604,47 @@
             let table = document.createElement('table');
             let header = document.createElement('thead');
             let body = document.createElement('tbody');
-            const contentString =
-                '<table>' +
-                // table header
-                '<thead>' +
-                '<tr>' +
-                '<th colspan="2">Header 1</th>' +
-                '</tr>' +
-                '</thead>' +
-                '<tbody>' +
-                // 1st row
-                '<tr>' +
-                '<td></td>' +
-                '<td></td>' +
-                '</tr>' +
-                // 2nd row
-                '<tr>' +
-                '<td></td>' +
-                '<td></td>' +
-                '</tr>' +
+            let tableRow = document.createElement('tr');
+            let tableHead = document.createElement('th');
+            // let tableData = document.createElement('td');
 
-                '<tr>' +
-                '<td></td>' +
-                '<td></td>' +
-                '</tr>' +
-                '<tr>' +
-                '<td></td>' +
-                '<td></td>' +
-                '</tr>' +
-                '</tbody>' +
-                '</table>';
-
-            const infowindow = new google.maps.InfoWindow({ content: contentString, });
+            const infowindow = new google.maps.InfoWindow({headerDisabled : true,});
             if (type == 1 && feature.getGeometry().getType() == 'Polygon') {
+                var volume = calculateVolume(feature);
+                var dropSize = calculateDropSize(feature);
+                var gtStore = calculateGTstore(feature);
+                var idmStore = calculateIDMStore(feature);
+                var cakrawalaData = calculateCakData(feature);
+                
+                tableHead.innerText = "Square ID : " + feature.getProperty(siteConfig.squareIdProperty);
+                tableRow.appendChild(tableHead);
+                header.appendChild(tableRow);
+                
+                // body.appendChild(volume);
+                // body.appendChild(dropSize);
+                // body.appendChild(gtStore);
+                // body.appendChild(idmStore);
+                // body.appendChild(cakrawalaData);
+
+                table.appendChild(header);
+                table.appendChild(body);
+                
+                infowindow.setContent(table);
                 infowindow.setPosition(feature.getGeometry().getAt(0).getAt(0));
                 infowindow.open(map);
             } else if (type == 2 && feature.getGeometry().getType() == 'Point') {
+                
+                tableHead.innerText = "Store Category : " + feature.getProperty(siteConfig.bosnetCustCategory);
+                tableRow.appendChild(tableHead);
+                header.appendChild(tableRow);
+
+                table.appendChild(header);
+                table.appendChild(body);
+                infowindow.setContent(table);
                 infowindow.setPosition(feature.getGeometry().get());
                 infowindow.open(map);
+            } else if (type == 3 && feature.getGeometry().getType() == 'Point') {
+
             }
         }
 
@@ -653,6 +656,27 @@
             });
             return !status;
         }
+
+        function calculateVolume(ft) {
+            return 0;
+        }
+
+        function calculateDropSize(ft) {
+            return 0;
+        }
+
+        function calculateGTstore(ft) {
+            return 0;
+        }
+
+        function calculateIDMStore(ft) {
+            return 0;
+        }
+
+        function calculateCakData(ft) {
+            return 0;
+        }
+
 
     </script>
 
@@ -864,7 +888,6 @@
                     map.controls[google.maps.ControlPosition.RIGHT_TOP].push(customControl);
 
                     map.addListener('zoom_changed', (e) => {
-                        console.log(map.getZoom());
                         if (map.getZoom() >= 16) {
 
                         } else {
