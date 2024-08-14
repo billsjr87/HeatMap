@@ -179,7 +179,7 @@
             try {
                 // load workplace boundary shp file
                 geoWorkplace = await shp(
-                    siteConfig.siteAddress +
+                    siteConfig.siteAddress + 
                     siteConfig.siteMainFolder +
                     siteConfig.siteDataFolder +
                     dataSource._shp.wpBoundary
@@ -287,7 +287,7 @@
                     zIndex: 30,
                     visible: false,
                 });
-                layerSquareBoundary.addListener('click', (event) => {
+                layerIdm.addListener('click', (event) => {
                     onClickFunction(event.feature, 3);
                 });
 
@@ -632,7 +632,7 @@
                 table.appendChild(body);
 
                 infowindow.setContent(table);
-                infowindow.setPosition(feature.getGeometry().getAt(0).getAt(0));
+                infowindow.setPosition(feature.getGeometry().getAt(0).getAt(0)); // TODO change to calculate middle top of square
                 infowindow.open(map);
             } else if (type == 2 && feature.getGeometry().getType() == 'Point') {
 
@@ -642,11 +642,21 @@
 
                 table.appendChild(header);
                 table.appendChild(body);
+                
                 infowindow.setContent(table);
                 infowindow.setPosition(feature.getGeometry().get());
                 infowindow.open(map);
             } else if (type == 3 && feature.getGeometry().getType() == 'Point') {
+                tableHead.innerText = "Store Category : INDOMARET";
+                tableRow.appendChild(tableHead);
+                header.appendChild(tableRow);
 
+                table.appendChild(header);
+                table.appendChild(body);
+                
+                infowindow.setContent(table);
+                infowindow.setPosition(feature.getGeometry().get());
+                infowindow.open(map);
             }
         }
 
@@ -893,7 +903,7 @@
             const customControl = initCustomControl();
             map.controls[google.maps.ControlPosition.RIGHT_TOP].push(customControl);
             
-            loadData(function () {
+            loadData(function () { // TODO: CHANGE DATA LOAD TO SPECIFIC LOCATION
                 initMapVisual(function () {
                     initFilter();
 
