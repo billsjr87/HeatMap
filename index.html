@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Micro Targeting</title>
     <script type="text/javascript" src="Resources/js/configs.js"></script>
-    <script type="text/javascript" src="Resources/js/GeoJson.js"></script>
 </head>
 
 <body class="bg-secondary bg-gradient">
@@ -322,10 +321,10 @@
                     onClickFunction(event.feature, 2);
                 });
 
-                layerJTIStatus = filterVisual(layerJTI, layerJTIStatus);
-                layerIdmStatus = filterVisual(layerIdm, layerIdmStatus);
-                layerPoiStatus = filterVisual(layerPoi, layerPoiStatus);
-                layerBillboardStatus = filterVisual(layerBillboard, layerBillboardStatus);
+                // layerJTIStatus = filterVisual(layerJTI, layerJTIStatus);
+                // layerIdmStatus = filterVisual(layerIdm, layerIdmStatus);
+                // layerPoiStatus = filterVisual(layerPoi, layerPoiStatus);
+                // layerBillboardStatus = filterVisual(layerBillboard, layerBillboardStatus);
 
                 callback();
             } catch (err) {
@@ -498,8 +497,9 @@
 
             const elmLiJTIStore = document.createElement('li');
             elmLiJTIStore.id = 'jtiStore';
-            const elmAJTIStore = document.createElement('a');
-            elmAJTIStore.setAttribute('class', 'dropdown-item');
+            elmAJTIStore = document.createElement('a');
+            elmAJTIStore.setAttribute('class', 'dropdown-item disabled');
+            elmAJTIStore.setAttribute('aria-disabled', 'true');
             var iconJTIStore = layerJTIStatus ? eyeIcon : eyeIconClosed;
             elmAJTIStore.innerHTML = '<img src="' + iconJTIStore + '"></i> JTI Store';
             elmAJTIStore.addEventListener("click", (event) => {
@@ -512,8 +512,9 @@
 
             const elmLiIDMStore = document.createElement('li');
             elmLiIDMStore.id = 'idmStore';
-            const elmAIDMStore = document.createElement('a');
-            elmAIDMStore.setAttribute('class', 'dropdown-item');
+            elmAIDMStore = document.createElement('a');
+            elmAIDMStore.setAttribute('class', 'dropdown-item disabled');
+            elmAIDMStore.setAttribute('aria-disabled', 'true');
             var iconIDMStore = layerIdmStatus ? eyeIcon : eyeIconClosed;
             elmAIDMStore.innerHTML = '<img src="' + iconIDMStore + '"></i> IDM Store';
             elmAIDMStore.addEventListener("click", (event) => {
@@ -526,8 +527,9 @@
 
             const elmLiPoi = document.createElement('li');
             elmLiPoi.id = 'poi';
-            const elmAPoi = document.createElement('a');
-            elmAPoi.setAttribute('class', 'dropdown-item');
+            elmAPoi = document.createElement('a');
+            elmAPoi.setAttribute('class', 'dropdown-item disabled');
+            elmAPoi.setAttribute('aria-disabled', 'true');
             var iconPOI = layerPoiStatus ? eyeIcon : eyeIconClosed;
             elmAPoi.innerHTML = '<img src="' + iconPOI + '"></i> POI';
             elmAPoi.addEventListener("click", (event) => {
@@ -540,8 +542,9 @@
 
             const elmLiBill = document.createElement('li');
             elmLiBill.id = 'billboard';
-            const elmABill = document.createElement('a');
-            elmABill.setAttribute('class', 'dropdown-item');
+            elmABill = document.createElement('a');
+            elmABill.setAttribute('class', 'dropdown-item disabled');
+            elmABill.setAttribute('aria-disabled', 'true');
             var iconBillboard = layerBillboardStatus ? eyeIcon : eyeIconClosed;
             elmABill.innerHTML = '<img src="' + iconBillboard + '"></i> Billboard';
             elmABill.addEventListener("click", (event) => {
@@ -608,18 +611,18 @@
             let tableHead = document.createElement('th');
             // let tableData = document.createElement('td');
 
-            const infowindow = new google.maps.InfoWindow({headerDisabled : true,});
+            infowindow = new google.maps.InfoWindow({ headerDisabled: true, });
             if (type == 1 && feature.getGeometry().getType() == 'Polygon') {
                 var volume = calculateVolume(feature);
                 var dropSize = calculateDropSize(feature);
                 var gtStore = calculateGTstore(feature);
                 var idmStore = calculateIDMStore(feature);
                 var cakrawalaData = calculateCakData(feature);
-                
+
                 tableHead.innerText = "Square ID : " + feature.getProperty(siteConfig.squareIdProperty);
                 tableRow.appendChild(tableHead);
                 header.appendChild(tableRow);
-                
+
                 // body.appendChild(volume);
                 // body.appendChild(dropSize);
                 // body.appendChild(gtStore);
@@ -628,12 +631,12 @@
 
                 table.appendChild(header);
                 table.appendChild(body);
-                
+
                 infowindow.setContent(table);
                 infowindow.setPosition(feature.getGeometry().getAt(0).getAt(0));
                 infowindow.open(map);
             } else if (type == 2 && feature.getGeometry().getType() == 'Point') {
-                
+
                 tableHead.innerText = "Store Category : " + feature.getProperty(siteConfig.bosnetCustCategory);
                 tableRow.appendChild(tableHead);
                 header.appendChild(tableRow);
@@ -825,7 +828,7 @@
 
             // The map, centered at Uluru
             map = new Map(document.getElementById("map"), {
-                zoom: 10,
+                zoom: 8,
                 center: { lat: mapConfig.COUNTRY_CENTER.latitude, lng: mapConfig.COUNTRY_CENTER.longitude },
                 // mapId: "DEMO_MAP_ID",
                 restriction: {
@@ -860,16 +863,16 @@
         let layerSquareBoundaryStatus = true;
         let geoPoi;
         let layerPoi;
-        let layerPoiStatus = true;
+        let layerPoiStatus = false;
         let geoIdm;
         let layerIdm;
-        let layerIdmStatus = true;
+        let layerIdmStatus = false;
         let geoBillboard;
         let layerBillboard;
-        let layerBillboardStatus = true;
+        let layerBillboardStatus = false;
         let geoJTI;
         let layerJTI;
-        let layerJTIStatus = true;
+        let layerJTIStatus = false;
 
         let squareSegmentationFilter = new Array();
         let elmSquareSegmentFilter = document.getElementById('squareSegmentItem');
@@ -878,20 +881,35 @@
         let squareCategoryFilter = new Array();
         let elmSquareCategoryFilter = document.getElementById('squareCategoryItem');
 
+        let elmAJTIStore;
+        let elmAIDMStore;
+        let elmAPoi;
+        let elmABill;
+
+        let infowindow;
+
         // Functions call 
         initMap(function () {
+            
+            const customControl = initCustomControl();
+            map.controls[google.maps.ControlPosition.RIGHT_TOP].push(customControl);
+            
             loadData(function () {
                 initMapVisual(function () {
                     initFilter();
 
-                    const customControl = initCustomControl();
-                    map.controls[google.maps.ControlPosition.RIGHT_TOP].push(customControl);
-
                     map.addListener('zoom_changed', (e) => {
                         if (map.getZoom() >= 16) {
-
+                            elmAJTIStore.classList.remove("disabled");
+                            elmAIDMStore.classList.remove("disabled");
+                            elmAPoi.classList.remove("disabled");
+                            elmABill.classList.remove("disabled");
                         } else {
-
+                            elmAJTIStore.classList.add("disabled");
+                            elmAIDMStore.classList.add("disabled");
+                            elmAPoi.classList.add("disabled");
+                            elmABill.classList.add("disabled");
+                            // TODO: check if any of layer is visible, make unvisible.
                         }
                     });
                 });
