@@ -285,6 +285,7 @@
                         dataSource._icon.idmIcon,
                     opacity: 1,
                     zIndex: 30,
+                    visible: false,
                 });
                 layerSquareBoundary.addListener('click', (event) => {
                     onClickFunction(event.feature, 3);
@@ -298,6 +299,7 @@
                         dataSource._icon.poiIcon,
                     opacity: 1,
                     zIndex: 40,
+                    visible: false,
                 });
 
                 layerBillboard = new google.maps.Data({ map: map });
@@ -307,6 +309,7 @@
                         dataSource._icon.billboardIcon,
                     opacity: 1,
                     zIndex: 50,
+                    visible: false,
                 });
 
                 layerJTI = new google.maps.Data({ map: map });
@@ -316,15 +319,11 @@
                         dataSource._icon.jtiIcon,
                     opacity: 1,
                     zIndex: 60,
+                    visible: false,
                 });
                 layerJTI.addListener('click', (event) => {
                     onClickFunction(event.feature, 2);
                 });
-
-                // layerJTIStatus = filterVisual(layerJTI, layerJTIStatus);
-                // layerIdmStatus = filterVisual(layerIdm, layerIdmStatus);
-                // layerPoiStatus = filterVisual(layerPoi, layerPoiStatus);
-                // layerBillboardStatus = filterVisual(layerBillboard, layerBillboardStatus);
 
                 callback();
             } catch (err) {
