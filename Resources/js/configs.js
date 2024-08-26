@@ -7,6 +7,14 @@ const date_format = "en-GB";
 const date_options = { year: 'numeric', month: 'short', day: '2-digit' };
 const time_options = {hour:'numeric', minute:'numeric'};
 const time_only_options = {hour:'2-digit', minute:'2-digit'};
+const csvDelimiter = ',';
+
+// Numbering Format
+const numberFormat = {
+  minDecimalDigit: 1,
+  maxDecimalDigit: 1,
+  region: 'en-US',
+}
 
 //SITE CONFIG
 const siteConfig = {
@@ -39,27 +47,40 @@ const mapConfig = {
     east: 141.16,
   },
   COUNTRY_CENTER : {
-    latitude: -1.129216,
-    longitude: 117.052246,
+    // latitude: -1.129216,
+    // longitude: 117.052246,
+    latitude: -7.301581, 
+    longitude: 112.724906,
   },
 };
 
+
+// DATA CONFIG
 const dataSource = {
   _main: 'Data',
   _shp: {
     wpBoundary: '/SHP/Workplace/JTI Coverage 2024 - WP Boundaries Final',
     sqBoundary: '/SHP/Square',
     sqBoundaries: {
-      eastern: "/Eastern/Eastern_Square-Join-H1'24",
-      javanusa: "/JavaNusa/JavaNusa_Square-Join-HI'24",
-      sumatera: "/Sumatera/Sumatera-Square-Join-H1'24",
+      eastern: "/Eastern.zip",
+      javanusa: "/JavaNusa.zip",
+      sumatera: "/Sumatera.zip",
     },
   },
   _point: {
-    idmPoint: '/Point/Store_Locations.xlsx',
     poiPoint: '/Point/Camel POIs.csv',
     billboardPoint: '/Point/JTI Billboard.xlsx',
-    jtiPoint: '/Point/Raw data sample - Coverage.xlsx',
+    jtiPointjson: '/Point/BosnetCoverages/',
+    idmPointjson: '/Point/IDMCoverages/idm_coverage.json',
+  },
+  _transaction: {
+    bosnet: '/Transaction/BOSNET/',
+    cakrawala: "/Transaction/CAKRAWALA/Summary Post Cakrawala-May'24.xlsb",
+    idm: "/Transaction/IDM/idm_transaction_CAMEL.json",
+  },
+  _mapping: {
+    jtiProduct: '/Mapping/JTI Product Mapping.xlsx',
+    sobProduct: '/Mapping/List of SOB.xlsx',
   },
   _icon: {
     idmIcon: '/CamelIcon01.png',
@@ -67,9 +88,10 @@ const dataSource = {
     billboardIcon: '/marker0.png',
     jtiIcon: '/marker1.png',
   },
+  _default: {
+    workPlace: '044-00',
+  }
 }
-
-
 
 
 

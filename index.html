@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Micro Targeting</title>
     <script type="text/javascript" src="Resources/js/configs.js"></script>
+    <script type="text/javascript" src="Resources/js/shp.js"></script>
 </head>
 
 <body class="bg-secondary bg-gradient">
@@ -179,43 +180,87 @@
             try {
                 // load workplace boundary shp file
                 geoWorkplace = await shp(
-                    siteConfig.siteAddress + 
+                    siteConfig.siteAddress +
                     siteConfig.siteMainFolder +
                     siteConfig.siteDataFolder +
                     dataSource._shp.wpBoundary
+                    , 'shp', true
                 );
-                // load square boundary shp file
+                // load square boundary shp file 
                 geoSquare = await shp(
                     siteConfig.siteAddress +
                     siteConfig.siteMainFolder +
                     siteConfig.siteDataFolder +
                     dataSource._shp.sqBoundary +
                     dataSource._shp.sqBoundaries.javanusa
+                    , 'shp', true
                 );
                 geoIdm = await loadDataToArray(
                     siteConfig.siteAddress +
                     siteConfig.siteMainFolder +
                     siteConfig.siteDataFolder +
-                    dataSource._point.idmPoint
-                    , 'xlsx', 'Average_of_Latitude', 'Average_of_Longitude');
+                    dataSource._point.idmPointjson
+                    , 'json', true);
                 geoPoi = await loadDataToArray(
                     siteConfig.siteAddress +
                     siteConfig.siteMainFolder +
                     siteConfig.siteDataFolder +
                     dataSource._point.poiPoint
-                    , 'csv');
+                    , 'csv', true);
                 geoBillboard = await loadDataToArray(
                     siteConfig.siteAddress +
                     siteConfig.siteMainFolder +
                     siteConfig.siteDataFolder +
                     dataSource._point.billboardPoint
-                    , 'xlsx', 'Lat', 'Lng');
+                    , 'xlsx', true, 'Lat', 'Lng');
                 geoJTI = await loadDataToArray(
                     siteConfig.siteAddress +
                     siteConfig.siteMainFolder +
                     siteConfig.siteDataFolder +
-                    dataSource._point.jtiPoint
-                    , 'xlsx', 'szlatitude', 'szlongitude');
+                    dataSource._point.jtiPointjson +
+                    wpCode + '.json'
+                    , 'json', true, 'szlatitude', 'szlongitude', 1);
+
+                transactionBosnet = await loadDataToArray(
+                    siteConfig.siteAddress +
+                    siteConfig.siteMainFolder +
+                    siteConfig.siteDataFolder +
+                    dataSource._transaction.bosnet +
+                    wpCode + '.json'
+                    , 'json', false);
+
+                jtiProduct = await loadDataToArray(
+                    siteConfig.siteAddress +
+                    siteConfig.siteMainFolder +
+                    siteConfig.siteDataFolder +
+                    dataSource._mapping.jtiProduct
+                    , 'xlsx', false);
+
+                sobProduct = await loadDataToArray(
+                    siteConfig.siteAddress +
+                    siteConfig.siteMainFolder +
+                    siteConfig.siteDataFolder +
+                    dataSource._mapping.sobProduct
+                    , 'xlsx', false);
+                sobProductIdm = sobProduct.filter((product) => product['Source Data'] == 'IDM');
+                sobProductCakrawala = sobProduct.filter((product) => product['Source Data'] == 'Cakrawala');
+
+                transactionCakrawala = await loadDataToArray(
+                    siteConfig.siteAddress +
+                    siteConfig.siteMainFolder +
+                    siteConfig.siteDataFolder +
+                    dataSource._transaction.cakrawala
+                    , 'xlsx', false);
+                transactionCakrawalaFiltered = transactionCakrawala.filter((data) => data['Work Place'].slice(0, data['Work Place'].indexOf(' ')) == wpCode);
+
+                transactionIdm = await loadDataToArray(
+                    siteConfig.siteAddress +
+                    siteConfig.siteMainFolder +
+                    siteConfig.siteDataFolder +
+                    dataSource._transaction.idm
+                    , 'json', false
+                );
+
                 callback();
             } catch (err) {
                 console.error('Data failed to load: ' + err.message);
@@ -332,6 +377,34 @@
         }
 
         function initFilter() {
+            elmCategoryFilter.innerHTML = '';
+            jtiProduct.forEach(data => {
+                var temp = data['Segment'];
+                if (categoryFilter.length != 0 && categoryFilter.includes(temp)) {
+                    return;
+                } else {
+                    categoryFilter.push(temp);
+                }
+            });
+            var elmListCategoryNode;
+            categoryFilter.forEach(item => {
+                elmListCategoryNode = document.createElement('li');
+                var elmLinkNode = document.createElement('a');
+
+                var elmText;
+                elmLinkNode.setAttribute('class', 'dropdown-item'); // set attribute for a
+                elmLinkNode.setAttribute('href', '#'); // set attribute for a
+                elmLinkNode.setAttribute('id', item);
+                elmText = document.createTextNode(item);
+                elmLinkNode.addEventListener("click", (event) => {
+                    // layerSquareBoundary.revertStyle();
+                    // overrideSegmentStyle(event.target.id, 0);
+                });
+                elmLinkNode.appendChild(elmText);
+                elmListCategoryNode.appendChild(elmLinkNode);
+                elmCategoryFilter.appendChild(elmListCategoryNode);
+            });
+
             // Square segment filter
             // Get array of segmentation from layerSquareBoundary
             elmSquareSegmentFilter.innerHTML = ''; // clear out html element
@@ -566,11 +639,11 @@
                 switch (type) {
                     case 0:
                         var segment = feature.getProperty(siteConfig.squareSegmentProperty);
-                        if (segment == elmId) {
+                        if (segment != elmId) {
                             layerSquareBoundary.overrideStyle(feature, {
                                 strokeColor: 'yellow',
-                                strokeWeight: 2.0,
-                                fillOpacity: 1.0,
+                                strokeWeight: 0.0,
+                                fillOpacity: 0.0,
                             });
                         }
                         break;
@@ -579,8 +652,8 @@
                         if (segment == elmId) {
                             layerSquareBoundary.overrideStyle(feature, {
                                 strokeColor: 'yellow',
-                                strokeWeight: 2.0,
-                                fillOpacity: 1.0,
+                                strokeWeight: 0.0,
+                                fillOpacity: 0.0,
                             });
                         }
                         break;
@@ -589,8 +662,8 @@
                         if (segment == elmId) {
                             layerSquareBoundary.overrideStyle(feature, {
                                 strokeColor: 'yellow',
-                                strokeWeight: 2.0,
-                                fillOpacity: 1.0,
+                                strokeWeight: 0.0,
+                                fillOpacity: 0.0,
                             });
                         }
                         break;
@@ -603,19 +676,39 @@
         }
 
         function onClickFunction(feature, type) {
+            infowindow = new google.maps.InfoWindow({ headerDisabled: true, maxWidth: 500, });
             let table = document.createElement('table');
+            table.setAttribute('class', 'table table-sm table-striped');
             let header = document.createElement('thead');
             let body = document.createElement('tbody');
+            let caption = document.createElement('caption');
+            let button = document.createElement('button');
+            button.type = 'button';
+            button.setAttribute('class', 'btn btn-secondary btn-sm float-end');
+            button.innerHTML = 'Close';
+            button.addEventListener('click', (event) => {
+                infowindow.close();
+            });
+            caption.appendChild(button);
+            table.appendChild(caption);
+            body.setAttribute('class', 'table-group-divider')
+            body.setAttribute('style', 'height: 300px; overflow-y: auto;');
             let tableRow = document.createElement('tr');
             let tableHead = document.createElement('th');
-            // let tableData = document.createElement('td');
 
-            infowindow = new google.maps.InfoWindow({ headerDisabled: true, });
+
             if (type == 1 && feature.getGeometry().getType() == 'Polygon') {
+                var sw = feature.getGeometry().getAt(0).getAt(0);
+                var ne = feature.getGeometry().getAt(0).getAt(2)
+                var bound = new google.maps.LatLngBounds(sw, ne);
+                console.log(bound);
+
+                var gtStore = calculateGTstore(bound);
+                var idmStore = calculateIDMStore(bound);
+
                 var volume = calculateVolume(feature);
                 var dropSize = calculateDropSize(feature);
-                var gtStore = calculateGTstore(feature);
-                var idmStore = calculateIDMStore(feature);
+                
                 var cakrawalaData = calculateCakData(feature);
 
                 tableHead.innerText = "Square ID : " + feature.getProperty(siteConfig.squareIdProperty);
@@ -640,9 +733,72 @@
                 tableRow.appendChild(tableHead);
                 header.appendChild(tableRow);
 
+                var listProduct = new Array();
+                var custId = feature.getProperty('szCustId');
+                var filteredTransaction = transactionBosnet.filter((line) => line['CustomerId'] == custId);
+                var storeId = document.createElement('tr');
+                storeId.id = custId;
+                var storeIdLabel = document.createElement('td');
+                storeIdLabel.innerHTML = 'Store ID';
+                var storeIdValue = document.createElement('td');
+                storeIdValue.innerHTML = custId;
+                storeId.appendChild(storeIdLabel);
+                storeId.appendChild(storeIdValue);
+                body.appendChild(storeId);
+                jtiProduct.forEach(product => {
+                    let tableRowProduct = document.createElement('tr');
+                    tableRowProduct.setAttribute('data-category', product['Segment']);
+                    var tempProduct = product['KATEGORI PRODUK'];
+                    var label = product['SKU Name (For pop-up details)'];
+                    if (!listProduct.includes(label)) {
+                        listProduct.push(label);
+                        var filteredSelection = filteredTransaction.filter((transaction) => transaction['CategoryProduct'] == tempProduct);
+                        var ec = 0;
+                        var vol = 0;
+                        filteredSelection.forEach(trx => {
+                            ec = + trx['EffectiveCall'];
+                            vol = + trx['Volume'];
+                        });
+                        var dropSize = (vol != 0 && ec != 0) ? vol / ec : 0;
+                        var elmLabel = document.createElement('td');
+                        elmLabel.innerHTML = label + ' Dz';
+                        tableRowProduct.appendChild(elmLabel);
+                        var elmValue = document.createElement('td');
+                        elmValue.innerHTML = dropSize.toLocaleString(numberFormat, {
+                            minimumFractionDigits: numberFormat.minDecimalDigit,
+                            maximumFractionDigits: numberFormat.maxDecimalDigit,
+                        },);
+                        tableRowProduct.appendChild(elmValue);
+                        body.appendChild(tableRowProduct);
+                    } else {
+                        // TODO add calculation if already included in array
+                    }
+
+                });
+
+                sobProductCakrawala.forEach(product => {
+                    let tableRowProduct = document.createElement('tr');
+                    tableRowProduct.setAttribute('data-category', product['Segment']);
+                    var label = product['SOB - Variant Level'];
+                    var filteredSelection = transactionCakrawalaFiltered.filter((dt) => dt['Id Pelanggan'] == custId);
+                    var elmLabel = document.createElement('td');
+                    elmLabel.innerHTML = 'Cakrawala ' + label;
+                    tableRowProduct.appendChild(elmLabel);
+                    var elmValue = document.createElement('td');
+                    console.log(filteredSelection[0][label]);
+                    var value = filteredSelection[0][label] ? (filteredSelection[0][label]).toLocaleString(numberFormat.region,
+                        {
+                            maximumFractionDigits: numberFormat.maxDecimalDigit,
+                            minimumFractionDigits: numberFormat.minDecimalDigit,
+                        },) : '0.0';
+                    elmValue.innerHTML = value + ' packs';
+                    tableRowProduct.appendChild(elmValue);
+                    body.appendChild(tableRowProduct);
+                });
+
                 table.appendChild(header);
                 table.appendChild(body);
-                
+
                 infowindow.setContent(table);
                 infowindow.setPosition(feature.getGeometry().get());
                 infowindow.open(map);
@@ -651,9 +807,40 @@
                 tableRow.appendChild(tableHead);
                 header.appendChild(tableRow);
 
+                var storeName = feature.getProperty('StoreName');
+                var store = document.createElement('tr');
+                store.id = storeName;
+                var storeIdLabel = document.createElement('td');
+                storeIdLabel.innerHTML = 'Store ID';
+                var storeIdValue = document.createElement('td');
+                storeIdValue.innerHTML = storeName;
+                store.appendChild(storeIdLabel);
+                store.appendChild(storeIdValue);
+                body.appendChild(store);
+
+                var filteredTransaction = transactionIdm.filter((data) => data['Store_Name'] == storeName);
+                filteredTransaction.forEach(product => {
+                    let tableRowProduct = document.createElement('tr');
+                    tableRowProduct.setAttribute('data-category', product['Segment']);
+                    var label = product['SKU'];
+                    var elmLabel = document.createElement('td');
+                    elmLabel.innerHTML = label + ' ASPD';
+                    tableRowProduct.appendChild(elmLabel);
+                    var elmValue = document.createElement('td');
+                    var value = (product['Sales_Qty'] / 30).toLocaleString(numberFormat.region,
+                        {
+                            maximumFractionDigits: numberFormat.maxDecimalDigit,
+                            minimumFractionDigits: numberFormat.minDecimalDigit,
+                        }
+                    );
+                    elmValue.innerHTML = value + ' packs';
+                    tableRowProduct.appendChild(elmValue);
+                    body.appendChild(tableRowProduct);
+                });
+
                 table.appendChild(header);
                 table.appendChild(body);
-                
+
                 infowindow.setContent(table);
                 infowindow.setPosition(feature.getGeometry().get());
                 infowindow.open(map);
@@ -669,7 +856,8 @@
             return !status;
         }
 
-        function calculateVolume(ft) {
+        function calculateVolume(bound) {
+
             return 0;
         }
 
@@ -677,12 +865,20 @@
             return 0;
         }
 
-        function calculateGTstore(ft) {
-            return 0;
+        function calculateGTstore(bound) {
+            var count = 0;
+            layerJTI.forEach(feature => {
+                if (bound.contains(feature.getGeometry().get())) { count++; }
+            });
+            return count;
         }
 
-        function calculateIDMStore(ft) {
-            return 0;
+        function calculateIDMStore(bound) {
+            var count = 0;
+            layerIdm.forEach(feature => {
+                if (bound.contains(feature.getGeometry().get())) {count++;}
+            });
+            return count;
         }
 
         function calculateCakData(ft) {
@@ -693,35 +889,85 @@
     </script>
 
     <script>/** ADDTIONAL FUNCTIONS **/
-        async function loadDataToArray(fileLoc, fileType, lat = "Latitude", lng = "Longitude") {
-            if (fileType && fileType == 'xlsx') {
-                async function loadXlsxFile(fileLoc) {
-                    const file = await (await fetch(fileLoc)).arrayBuffer();
-                    var workbook = XLSX.readFile(file);
-                    var sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    var rowObject = XLSX.utils.sheet_to_row_object_array(sheet);
-                    return rowObject;
-                }
-                return convertToGeoJsonFromArray(await loadXlsxFile(fileLoc), lat, lng);
-            } else {
-                let response = $.ajax({
-                    url: fileLoc,
-                    async: false,
-                    dataType: "text",
-                });
-                if (response.status == 200) {
-                    switch (fileType) {
-                        case 'csv':
-                            return responseTextToGeoJson(response.responseText);
-                            break;
-
-                        default:
-                            return stringToArray(response.responseText);
-                            break;
+        async function loadDataToArray(fileLoc, fileType, geo = false, lat = "Latitude", lng = "Longitude", convert = 0) {
+            if (geo) {
+                if (fileType && fileType == 'xlsx') {
+                    async function loadXlsxFile(fileLoc) {
+                        const file = await (await fetch(fileLoc)).arrayBuffer();
+                        var workbook = XLSX.readFile(file);
+                        var sheet = workbook.Sheets[workbook.SheetNames[0]];
+                        var rowObject = XLSX.utils.sheet_to_row_object_array(sheet);
+                        return rowObject;
+                    }
+                    return convertToGeoJsonFromArray(await loadXlsxFile(fileLoc), lat, lng);
+                } else if (fileType && fileType == 'json') {
+                    let response = $.ajax({
+                        url: fileLoc,
+                        async: false,
+                        dataType: "json",
+                    });
+                    if (response.status == 200) {
+                        if (convert == 1) {
+                            var data = response.responseJSON;
+                            data.forEach(item => {
+                                item[lat] = convertStringToNumber(item[lat]);
+                                item[lng] = convertStringToNumber(item[lng]);
+                            });
+                            return convertToGeoJsonFromArray(await data, lat, lng);;
+                        } else {
+                            return convertToGeoJsonFromArray(await response.responseJSON, lat, lng);;
+                        }
                     }
                 } else {
-                    return false;
+                    let response = $.ajax({
+                        url: fileLoc,
+                        async: false,
+                        dataType: "text",
+                    });
+                    if (response.status == 200) {
+                        switch (fileType) {
+                            case 'csv':
+                                return responseTextToGeoJson(response.responseText);
+                                break;
+
+                            default:
+                                return stringToArray(response.responseText);
+                                break;
+                        }
+                    } else {
+                        return false;
+                    }
                 }
+
+            } else {
+                if (fileType && fileType == 'json') {
+                    let response = $.ajax({
+                        url: fileLoc,
+                        async: false,
+                        dataType: "json",
+                    });
+                    return response.responseJSON;
+                } else if (fileType && fileType == 'xlsx') {
+                    async function loadXlsxFile(fileLoc) {
+                        const file = await (await fetch(fileLoc)).arrayBuffer();
+                        var workbook = XLSX.readFile(file);
+                        var sheet = workbook.Sheets[workbook.SheetNames[0]];
+                        var rowObject = XLSX.utils.sheet_to_row_object_array(sheet);
+                        return rowObject;
+                    }
+                    return await loadXlsxFile(fileLoc);
+                } else {
+                    let response = $.ajax({
+                        url: fileLoc,
+                        async: false,
+                        dataType: "text",
+                    });
+                    return stringToArray(response.responseText);
+                }
+            }
+
+            function convertStringToNumber(string) {
+                return Number(string);
             }
 
             /** PARSE ARRAY TO GEOJSON **/
@@ -833,7 +1079,8 @@
             // Request needed libraries.
             //@ts-ignore
             const { Map } = await google.maps.importLibrary("maps");
-            const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+            const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker");
+            const { LatLngBounds } = await google.maps.importLibrary("core");
 
             // The map, centered at Uluru
             map = new Map(document.getElementById("map"), {
@@ -853,11 +1100,11 @@
     <script>/** MAIN SCRIPT **/
 
         // Add additional scripts to HTML header
+        // loadScript(siteConfig.siteResourceFolder.javascript + '/shp.js', 1);
         loadScript(siteConfig.siteResourceFolder.icon + '/min_logo-route-final-01.ico', 3);
         loadScript(siteConfig.siteResourceFolder.stylesheet + '/bootstrap.min.css', 2);
         loadScript(siteConfig.siteResourceFolder.javascript + '/bootstrap.bundle.min.js', 1);
         loadScript(siteConfig.siteResourceFolder.javascript + '/jquery.min.js', 1);
-        loadScript(siteConfig.siteResourceFolder.javascript + '/shp.js', 1);
         loadScript(siteConfig.siteResourceFolder.javascript + '/GeoJson.js', 1);
         loadScript(siteConfig.siteResourceFolder.javascript + '/papaparse.min.js', 1);
         loadScript(siteConfig.siteResourceFolder.javascript + '/xlsx.full.min.js', 1);
@@ -882,6 +1129,17 @@
         let geoJTI;
         let layerJTI;
         let layerJTIStatus = false;
+        let transactionBosnet;
+        let transactionCakrawala;
+        let transactionCakrawalaFiltered;
+        let transactionIdm;
+        let jtiProduct;
+        let sobProduct;
+        let sobProductIdm;
+        let sobProductCakrawala;
+
+        var urlParams = new URLSearchParams(location.search);
+        let wpCode = urlParams.get('wp') ? urlParams.get('wp') : dataSource._default.workPlace;
 
         let squareSegmentationFilter = new Array();
         let elmSquareSegmentFilter = document.getElementById('squareSegmentItem');
@@ -889,6 +1147,10 @@
         let elmSquareIdFilter = document.getElementById('squareItem');
         let squareCategoryFilter = new Array();
         let elmSquareCategoryFilter = document.getElementById('squareCategoryItem');
+        let workplaceFilter = new Array();
+        let elmWorkplaceFilter = document.getElementById('clusterItem');
+        let categoryFilter = new Array();
+        let elmCategoryFilter = document.getElementById('categoryItem');
 
         let elmAJTIStore;
         let elmAIDMStore;
@@ -899,12 +1161,13 @@
 
         // Functions call 
         initMap(function () {
-            
+
             const customControl = initCustomControl();
             map.controls[google.maps.ControlPosition.RIGHT_TOP].push(customControl);
-            
-            loadData(function () { // TODO: CHANGE DATA LOAD TO SPECIFIC LOCATION
+
+            loadData(function () {
                 initMapVisual(function () {
+
                     initFilter();
 
                     map.addListener('zoom_changed', (e) => {
