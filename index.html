@@ -676,7 +676,6 @@
         }
 
         function onClickFunction(feature, type) {
-            infowindow = new google.maps.InfoWindow({ headerDisabled: true, maxWidth: 500, });
             let table = document.createElement('table');
             table.setAttribute('class', 'table table-sm table-striped');
             let header = document.createElement('thead');
@@ -699,33 +698,84 @@
 
             if (type == 1 && feature.getGeometry().getType() == 'Polygon') {
                 var sw = feature.getGeometry().getAt(0).getAt(0);
-                var ne = feature.getGeometry().getAt(0).getAt(2)
+                var ne = feature.getGeometry().getAt(0).getAt(2);
                 var bound = new google.maps.LatLngBounds(sw, ne);
-                console.log(bound);
 
+                function midPoint(sw, ne) {
+                    var latAverage = (sw.lat() + ne.lat()) / 2;
+                    var lngAverage = (sw.lng() + ne.lng()) / 2;
+                    return new google.maps.LatLng(latAverage, lngAverage);
+                }
+                var mid = midPoint(sw, ne);
+
+                var volume = calculateVolume(bound);
+                var dropSize = calculateDropSize(bound);
                 var gtStore = calculateGTstore(bound);
                 var idmStore = calculateIDMStore(bound);
-
-                var volume = calculateVolume(feature);
-                var dropSize = calculateDropSize(feature);
-                
-                var cakrawalaData = calculateCakData(feature);
+                var cakrawalaData = calculateCakData(bound);
 
                 tableHead.innerText = "Square ID : " + feature.getProperty(siteConfig.squareIdProperty);
                 tableRow.appendChild(tableHead);
                 header.appendChild(tableRow);
 
-                // body.appendChild(volume);
-                // body.appendChild(dropSize);
-                // body.appendChild(gtStore);
-                // body.appendChild(idmStore);
-                // body.appendChild(cakrawalaData);
+                for (let index = 0; index < 4; index++) {
+                    var tableRowSquare = document.createElement('tr');
+                    var label = document.createElement('td');
+                    var value = document.createElement('td');
+                    switch (index) {
+                        case 0:
+                            label.innerText = 'Volume Shipment'
+                            value.innerText = volume;
+                            break;
+                        case 1:
+                            label.innerText = 'Dropsize'
+                            value.innerText = dropSize.toLocaleString(numberFormat, {
+                                minimumFractionDigits: numberFormat.minDecimalDigit,
+                                maximumFractionDigits: numberFormat.maxDecimalDigit,
+                            },);
+                            break;
+                        case 2:
+                            label.innerText = '# of GT Stores'
+                            value.innerText = gtStore;
+                            break;
+                        case 3:
+                            label.innerText = '# of IDM Stores'
+                            value.innerText = idmStore;
+                            break;
+                        default:
+                            break;
+                    }
+
+                    tableRowSquare.appendChild(label);
+                    tableRowSquare.appendChild(value);
+                    body.appendChild(tableRowSquare);
+                }
+                
+                sobProductCakrawala.forEach(product => {
+                    let tableRowProduct = document.createElement('tr');
+                    tableRowProduct.setAttribute('data-category', product['Segment']);
+                    var label = product['SOB - Variant Level'];
+                    var filteredSelection = cakrawalaData.filter((dt) => dt['product'] == label);
+                    
+                    var elmLabel = document.createElement('td');
+                    elmLabel.innerHTML = 'Cakrawala ' + label;
+                    tableRowProduct.appendChild(elmLabel);
+                    var elmValue = document.createElement('td');
+                    var value = filteredSelection[0]['total'] ? (filteredSelection[0]['total']).toLocaleString(numberFormat.region,
+                        {
+                            maximumFractionDigits: numberFormat.maxDecimalDigit,
+                            minimumFractionDigits: numberFormat.minDecimalDigit,
+                        },) : '0.0';
+                    elmValue.innerHTML = value + ' packs';
+                    tableRowProduct.appendChild(elmValue);
+                    body.appendChild(tableRowProduct);
+                });
 
                 table.appendChild(header);
                 table.appendChild(body);
 
                 infowindow.setContent(table);
-                infowindow.setPosition(feature.getGeometry().getAt(0).getAt(0)); // TODO change to calculate middle top of square
+                infowindow.setPosition(mid);
                 infowindow.open(map);
             } else if (type == 2 && feature.getGeometry().getType() == 'Point') {
 
@@ -785,7 +835,6 @@
                     elmLabel.innerHTML = 'Cakrawala ' + label;
                     tableRowProduct.appendChild(elmLabel);
                     var elmValue = document.createElement('td');
-                    console.log(filteredSelection[0][label]);
                     var value = filteredSelection[0][label] ? (filteredSelection[0][label]).toLocaleString(numberFormat.region,
                         {
                             maximumFractionDigits: numberFormat.maxDecimalDigit,
@@ -857,12 +906,33 @@
         }
 
         function calculateVolume(bound) {
+            var sum = 0;
+            layerJTI.forEach(feature => {
+                if (bound.contains(feature.getGeometry().get())) {
+                    var filteredSelection = transactionBosnet.filter(data => data['CustomerId'] == feature.getProperty('szCustId'));
+                    filteredSelection.forEach(dt => {
+                        sum = + dt['Volume'];
+                    });
 
-            return 0;
+                }
+            });
+            return sum;
         }
 
-        function calculateDropSize(ft) {
-            return 0;
+        function calculateDropSize(bound) {
+            var sum = 0;
+            var count = 0;
+            layerJTI.forEach(feature => {
+                if (bound.contains(feature.getGeometry().get())) {
+                    count++;
+                    var filteredSelection = transactionBosnet.filter(data => data['CustomerId'] == feature.getProperty('szCustId'));
+                    filteredSelection.forEach(dt => {
+                        sum = + dt['Volume'];
+                    });
+
+                }
+            });
+            return sum / count;
         }
 
         function calculateGTstore(bound) {
@@ -876,13 +946,31 @@
         function calculateIDMStore(bound) {
             var count = 0;
             layerIdm.forEach(feature => {
-                if (bound.contains(feature.getGeometry().get())) {count++;}
+                if (bound.contains(feature.getGeometry().get())) { count++; }
             });
             return count;
         }
 
-        function calculateCakData(ft) {
-            return 0;
+        function calculateCakData(bound) {
+            var result = new Array();
+            var temp = new Array();
+            layerJTI.forEach(feature => {
+                if (bound.contains(feature.getGeometry().get())) {
+                    var filteredSelection = transactionCakrawala.filter(data => data['Id Pelanggan'] == feature.getProperty('szCustId'));
+                    if (filteredSelection.length > 0) { temp.push(filteredSelection[0]); }
+                }
+            });
+            
+            sobProductCakrawala.forEach(product => {
+                var key = product['SOB - Variant Level'];
+                var sum = 0;
+                
+                temp.forEach(dt => {
+                    sum =+ dt[key];
+                });
+                result.push({'product': key, 'total' : sum});
+            });
+            return result;
         }
 
 
@@ -1129,18 +1217,22 @@
         let geoJTI;
         let layerJTI;
         let layerJTIStatus = false;
+
         let transactionBosnet;
         let transactionCakrawala;
         let transactionCakrawalaFiltered;
         let transactionIdm;
+
         let jtiProduct;
         let sobProduct;
         let sobProductIdm;
         let sobProductCakrawala;
 
+        // Get url parameters
         var urlParams = new URLSearchParams(location.search);
         let wpCode = urlParams.get('wp') ? urlParams.get('wp') : dataSource._default.workPlace;
 
+        // Variables for filters
         let squareSegmentationFilter = new Array();
         let elmSquareSegmentFilter = document.getElementById('squareSegmentItem');
         let squareIdFilter = new Array();
@@ -1152,11 +1244,13 @@
         let categoryFilter = new Array();
         let elmCategoryFilter = document.getElementById('categoryItem');
 
+        // Variables for Custom control
         let elmAJTIStore;
         let elmAIDMStore;
         let elmAPoi;
         let elmABill;
 
+        // Variable for info window (pop-up).
         let infowindow;
 
         // Functions call 
@@ -1167,7 +1261,7 @@
 
             loadData(function () {
                 initMapVisual(function () {
-
+                    infowindow = new google.maps.InfoWindow({ headerDisabled: true, maxWidth: 500, });
                     initFilter();
 
                     map.addListener('zoom_changed', (e) => {
@@ -1181,7 +1275,21 @@
                             elmAIDMStore.classList.add("disabled");
                             elmAPoi.classList.add("disabled");
                             elmABill.classList.add("disabled");
-                            // TODO: check if any of layer is visible, make unvisible.
+                            if (layerJTIStatus) {
+                                elmAJTIStore.click();
+                            }
+                            if (layerIdmStatus) {
+                                elmAIDMStore.click();
+                            }
+                            if (layerBillboardStatus) {
+                                elmABill.click();
+                            }
+                            if (layerPoiStatus) {
+                                elmAPoi.click();
+                            }
+                            if (infowindow.isOpen) {
+                                infowindow.close();
+                            }
                         }
                     });
                 });
