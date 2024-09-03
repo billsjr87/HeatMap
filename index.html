@@ -106,6 +106,7 @@
             <div class="col-7 ps-4 d-flex flex-column">
                 <!-- data summary section -->
                 <div class="row flex-grow-1 pb-2">
+                    <!-- section: Volume Sales -->
                     <div class="col d-flex flex-column bg-light">
                         <div class="row flex-shrink-1 p-2">
                             <div class="text-center h3 flex-grow-1">Volume Sales</div>
@@ -113,12 +114,14 @@
                         <div class="row flex-grow-1"></div>
                         <div class="row flex-grow-1"></div>
                     </div>
+                    <!-- section: Stock Condition -->
                     <div class="col d-flex flex-column bg-light mx-2">
                         <div class="row flex-shrink-1 p-2">
                             <div class="text-center h3 flex-grow-1">Stock Condition</div>
                         </div>
                         <div class="row flex-grow-1"></div>
                     </div>
+                    <!-- section: Distribution -->
                     <div class="col d-flex flex-column bg-light">
                         <div class="row flex-shrink-1 p-2">
                             <div class="text-center h3 flex-grow-1">Distribution</div>
@@ -147,6 +150,12 @@
     </div>
 
     <script>/** FUNCTIONS **/
+
+        /** 
+         * loadScript is function to add script tag or link tag in html head 
+         * @param src : url to source file
+         * @param elm : type 
+        **/
         async function loadScript(src, elm) {
             try {
                 let script;
@@ -181,7 +190,6 @@
                 // load workplace boundary shp file
                 geoWorkplace = await shp(
                     siteConfig.siteAddress +
-                    siteConfig.siteMainFolder +
                     siteConfig.siteDataFolder +
                     dataSource._shp.wpBoundary
                     , 'shp', true
@@ -189,33 +197,29 @@
                 // load square boundary shp file 
                 geoSquare = await shp(
                     siteConfig.siteAddress +
-                    siteConfig.siteMainFolder +
                     siteConfig.siteDataFolder +
                     dataSource._shp.sqBoundary +
                     dataSource._shp.sqBoundaries.javanusa
                     , 'shp', true
                 );
+                
                 geoIdm = await loadDataToArray(
                     siteConfig.siteAddress +
-                    siteConfig.siteMainFolder +
                     siteConfig.siteDataFolder +
                     dataSource._point.idmPointjson
                     , 'json', true);
                 geoPoi = await loadDataToArray(
                     siteConfig.siteAddress +
-                    siteConfig.siteMainFolder +
                     siteConfig.siteDataFolder +
                     dataSource._point.poiPoint
                     , 'csv', true);
                 geoBillboard = await loadDataToArray(
                     siteConfig.siteAddress +
-                    siteConfig.siteMainFolder +
                     siteConfig.siteDataFolder +
                     dataSource._point.billboardPoint
                     , 'xlsx', true, 'Lat', 'Lng');
                 geoJTI = await loadDataToArray(
                     siteConfig.siteAddress +
-                    siteConfig.siteMainFolder +
                     siteConfig.siteDataFolder +
                     dataSource._point.jtiPointjson +
                     wpCode + '.json'
@@ -223,7 +227,6 @@
 
                 transactionBosnet = await loadDataToArray(
                     siteConfig.siteAddress +
-                    siteConfig.siteMainFolder +
                     siteConfig.siteDataFolder +
                     dataSource._transaction.bosnet +
                     wpCode + '.json'
@@ -231,14 +234,12 @@
 
                 jtiProduct = await loadDataToArray(
                     siteConfig.siteAddress +
-                    siteConfig.siteMainFolder +
                     siteConfig.siteDataFolder +
                     dataSource._mapping.jtiProduct
                     , 'xlsx', false);
 
                 sobProduct = await loadDataToArray(
                     siteConfig.siteAddress +
-                    siteConfig.siteMainFolder +
                     siteConfig.siteDataFolder +
                     dataSource._mapping.sobProduct
                     , 'xlsx', false);
@@ -247,7 +248,6 @@
 
                 transactionCakrawala = await loadDataToArray(
                     siteConfig.siteAddress +
-                    siteConfig.siteMainFolder +
                     siteConfig.siteDataFolder +
                     dataSource._transaction.cakrawala
                     , 'xlsx', false);
@@ -255,7 +255,6 @@
 
                 transactionIdm = await loadDataToArray(
                     siteConfig.siteAddress +
-                    siteConfig.siteMainFolder +
                     siteConfig.siteDataFolder +
                     dataSource._transaction.idm
                     , 'json', false
@@ -750,13 +749,13 @@
                     tableRowSquare.appendChild(value);
                     body.appendChild(tableRowSquare);
                 }
-                
+
                 sobProductCakrawala.forEach(product => {
                     let tableRowProduct = document.createElement('tr');
                     tableRowProduct.setAttribute('data-category', product['Segment']);
                     var label = product['SOB - Variant Level'];
                     var filteredSelection = cakrawalaData.filter((dt) => dt['product'] == label);
-                    
+
                     var elmLabel = document.createElement('td');
                     elmLabel.innerHTML = 'Cakrawala ' + label;
                     tableRowProduct.appendChild(elmLabel);
@@ -910,10 +909,11 @@
             layerJTI.forEach(feature => {
                 if (bound.contains(feature.getGeometry().get())) {
                     var filteredSelection = transactionBosnet.filter(data => data['CustomerId'] == feature.getProperty('szCustId'));
-                    filteredSelection.forEach(dt => {
-                        sum = + dt['Volume'];
-                    });
-
+                    if (filteredSelection.length > 0) {
+                        filteredSelection.forEach(dt => {
+                            sum += dt['Volume'];
+                        });
+                    }
                 }
             });
             return sum;
@@ -924,12 +924,13 @@
             var count = 0;
             layerJTI.forEach(feature => {
                 if (bound.contains(feature.getGeometry().get())) {
-                    count++;
                     var filteredSelection = transactionBosnet.filter(data => data['CustomerId'] == feature.getProperty('szCustId'));
-                    filteredSelection.forEach(dt => {
-                        sum = + dt['Volume'];
-                    });
-
+                    if (filteredSelection.length > 0) {
+                        filteredSelection.forEach(dt => {
+                            sum += dt['Volume'];
+                            count += dt['EffectiveCall'];
+                        });
+                    }
                 }
             });
             return sum / count;
@@ -960,15 +961,15 @@
                     if (filteredSelection.length > 0) { temp.push(filteredSelection[0]); }
                 }
             });
-            
+
             sobProductCakrawala.forEach(product => {
                 var key = product['SOB - Variant Level'];
                 var sum = 0;
-                
+
                 temp.forEach(dt => {
-                    sum =+ dt[key];
+                    sum = + dt[key];
                 });
-                result.push({'product': key, 'total' : sum});
+                result.push({ 'product': key, 'total': sum });
             });
             return result;
         }

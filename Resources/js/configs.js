@@ -18,14 +18,14 @@ const numberFormat = {
 
 //SITE CONFIG
 const siteConfig = {
-  siteAddress : environment == 'prd'? 'https://jticorp.sharepoint.com/sites/Sales_Operation' : 'http://localhost',
+  siteAddress : environment == 'prd'? 'https://jticorp.sharepoint.com/sites/Sales_Operation/Heatmap' : 'http://localhost/Heatmap',
   siteMainFolder : '/HeatMap',
   siteResourceFolder : {
     stylesheet: 'Resources/css',
     javascript: 'Resources/js',
     icon: 'Resources/icon',
   },
-  siteDataFolder : '/Data',
+  siteDataFolder : '/Shared Documents/Data',
   squareSegmentProperty: 'Square',
   squareIdProperty: 'Square_C_1',
   squareCategoryProperty: 'Segment',
