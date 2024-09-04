@@ -7,6 +7,7 @@
     <title>Micro Targeting</title>
     <script type="text/javascript" src="Resources/js/configs.js"></script>
     <script type="text/javascript" src="Resources/js/shp.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 
 <body class="bg-secondary bg-gradient">
@@ -136,12 +137,25 @@
                         <nav aria-label="...">
                             <ul class="pagination pagination-sm">
                                 <li class="page-item active" aria-current="page">
-                                    <span class="page-link">1</span>
+                                    <a class="page-link" href="#" id="volume_link">Volume</a>
                                 </li>
-                                <li class="page-item"><a class="page-link" href="#">2</a></li>
-                                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                                <li class="page-item">
+                                    <a class="page-link" href="#" id="dropsize_link">Dropsize</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="#" id="ec_link">Effective Call (%)</a>
+                                </li>
                             </ul>
                         </nav>
+                        <canvas class="" id="volume_page">
+
+                        </canvas>
+                        <div class="d-none" id="dropsize_page">
+                            Content 2
+                        </div>
+                        <div class="d-none" id="ec_page">
+                            Content 3
+                        </div>
                     </div>
 
                 </div>
@@ -202,7 +216,6 @@
                     dataSource._shp.sqBoundaries.javanusa
                     , 'shp', true
                 );
-                
                 geoIdm = await loadDataToArray(
                     siteConfig.siteAddress +
                     siteConfig.siteDataFolder +
@@ -218,6 +231,7 @@
                     siteConfig.siteDataFolder +
                     dataSource._point.billboardPoint
                     , 'xlsx', true, 'Lat', 'Lng');
+
                 geoJTI = await loadDataToArray(
                     siteConfig.siteAddress +
                     siteConfig.siteDataFolder +
@@ -358,12 +372,27 @@
 
                 layerJTI = new google.maps.Data({ map: map });
                 layerJTI.addGeoJson(geoJTI);
-                layerJTI.setStyle({
-                    icon: siteConfig.siteResourceFolder.icon +
-                        dataSource._icon.jtiIcon,
-                    opacity: 1,
-                    zIndex: 60,
-                    visible: false,
+                layerJTI.setStyle(function (feature) {
+                    var channel = feature.getProperty(siteConfig.bosnetCustCategory);
+                    var icn;
+                    switch (channel) {
+                        case 'WHOLESALE':
+                            icn = siteConfig.siteResourceFolder.icon + dataSource._icon.jtiIcon.ws;
+                            break;
+                        case 'RETAIL':
+                            icn = siteConfig.siteResourceFolder.icon + dataSource._icon.jtiIcon.rt;
+                            break;
+
+                        default:
+                            break;
+                    }
+                    return {
+                        icon: icn,
+                        opacity: 1,
+                        zIndex: 60,
+                        visible: false,
+                    }
+
                 });
                 layerJTI.addListener('click', (event) => {
                     onClickFunction(event.feature, 2);
@@ -396,8 +425,7 @@
                 elmLinkNode.setAttribute('id', item);
                 elmText = document.createTextNode(item);
                 elmLinkNode.addEventListener("click", (event) => {
-                    // layerSquareBoundary.revertStyle();
-                    // overrideSegmentStyle(event.target.id, 0);
+                    filterCategory(event.target.id);
                 });
                 elmLinkNode.appendChild(elmText);
                 elmListCategoryNode.appendChild(elmLinkNode);
@@ -674,6 +702,25 @@
 
         }
 
+        function filterCategory(elm) {
+            if (infowindow.isOpen) { console.log(elm);
+            
+                var trElements = document.getElementById('infoWindow').children;
+                console.log(trElements);
+                
+                for (let index = 0; index < trElements.length; index++) {
+                    var check = trElements[index].getAttribute('data-category');
+                     
+                    if (check != elm && check !== null) {
+                        trElements[index].classList.add('d-none');
+                    } else {
+                        trElements[index].classList.remove('d-none');
+                    }
+                }
+                
+            }
+        }
+
         function onClickFunction(feature, type) {
             let table = document.createElement('table');
             table.setAttribute('class', 'table table-sm table-striped');
@@ -691,6 +738,7 @@
             table.appendChild(caption);
             body.setAttribute('class', 'table-group-divider')
             body.setAttribute('style', 'height: 300px; overflow-y: auto;');
+            body.id = 'infoWindow';
             let tableRow = document.createElement('tr');
             let tableHead = document.createElement('th');
 
@@ -805,8 +853,8 @@
                         var ec = 0;
                         var vol = 0;
                         filteredSelection.forEach(trx => {
-                            ec = + trx['EffectiveCall'];
-                            vol = + trx['Volume'];
+                            ec += trx['EffectiveCall'];
+                            vol += trx['Volume'];
                         });
                         var dropSize = (vol != 0 && ec != 0) ? vol / ec : 0;
                         var elmLabel = document.createElement('td');
@@ -965,13 +1013,28 @@
             sobProductCakrawala.forEach(product => {
                 var key = product['SOB - Variant Level'];
                 var sum = 0;
+                var count = 0;
+                var average = 0;
 
                 temp.forEach(dt => {
-                    sum = + dt[key];
+
+                    sum += dt[key];
+                    count++;
+
                 });
-                result.push({ 'product': key, 'total': sum });
+                average = sum / count;
+                result.push({ 'product': key, 'total': average });
             });
             return result;
+        }
+
+        function resetPages() {
+            volumeLink.parentElement.classList.remove('active');
+            volumePage.classList.add('d-none');
+            dropsizeLink.parentElement.classList.remove('active');
+            dropsizePage.classList.add('d-none');
+            ecLink.parentElement.classList.remove('active');
+            ecPage.classList.add('d-none');
         }
 
 
@@ -1245,11 +1308,42 @@
         let categoryFilter = new Array();
         let elmCategoryFilter = document.getElementById('categoryItem');
 
+        // Variables for pages
+        let volumeLink = document.getElementById(pages.volume.link);
+        let volumePage = document.getElementById(pages.volume.page);
+        let dropsizeLink = document.getElementById(pages.dropsize.link);
+        let dropsizePage = document.getElementById(pages.dropsize.page);
+        let ecLink = document.getElementById(pages.ec.link);
+        let ecPage = document.getElementById(pages.ec.page);
+
         // Variables for Custom control
         let elmAJTIStore;
         let elmAIDMStore;
         let elmAPoi;
         let elmABill;
+
+        new Chart(volumePage, {
+            type: 'bar',
+            data: {
+                labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
+                datasets: [{
+                    label: 'Win',
+                    data: [12, 19, 3, 5, 2, 3],
+                    borderWidth: 1
+                }, {
+                    label: 'Expand',
+                    data: [12, 19, 3, 5, 2, 3],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
 
         // Variable for info window (pop-up).
         let infowindow;
@@ -1265,12 +1359,36 @@
                     infowindow = new google.maps.InfoWindow({ headerDisabled: true, maxWidth: 500, });
                     initFilter();
 
+                    volumeLink.addEventListener('click', (e) => {
+                        resetPages();
+                        volumePage.classList.remove('d-none');
+                        volumeLink.parentElement.classList.add('active');
+                    });
+
+                    dropsizeLink.addEventListener('click', (e) => {
+                        resetPages();
+                        dropsizePage.classList.remove('d-none');
+                        dropsizeLink.parentElement.classList.add('active');
+                    });
+
+                    ecLink.addEventListener('click', (e) => {
+                        resetPages();
+                        ecPage.classList.remove('d-none');
+                        ecLink.parentElement.classList.add('active');
+                    });
+
                     map.addListener('zoom_changed', (e) => {
                         if (map.getZoom() >= 16) {
                             elmAJTIStore.classList.remove("disabled");
                             elmAIDMStore.classList.remove("disabled");
                             elmAPoi.classList.remove("disabled");
                             elmABill.classList.remove("disabled");
+                            if (!layerJTIStatus) {
+                                elmAJTIStore.click();
+                            }
+                            if (!layerIdmStatus) {
+                                elmAIDMStore.click();
+                            }
                         } else {
                             elmAJTIStore.classList.add("disabled");
                             elmAIDMStore.classList.add("disabled");

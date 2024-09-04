@@ -83,17 +83,38 @@ const dataSource = {
     sobProduct: '/Mapping/List of SOB.xlsx',
   },
   _icon: {
-    idmIcon: '/CamelIcon01.png',
-    poiIcon: '/CamelIcon02.png',
-    billboardIcon: '/marker0.png',
-    jtiIcon: '/marker1.png',
+    idmIcon: '/indomaret.ico',
+    poiIcon: '/poi.ico',
+    billboardIcon: '/billboard.ico',
+    jtiIcon: {
+      ws: '/box.ico',
+      rt: '/store.ico',
+    },
   },
   _default: {
     workPlace: '044-00',
   }
 }
 
-
+const pages = {
+  volume: {
+    link: 'volume_link',
+    page: 'volume_page',
+  },
+  dropsize: {
+    link: 'dropsize_link',
+    page: 'dropsize_page',
+  },
+  ec: {
+    link: 'ec_link',
+    page: 'ec_page',
+  },
+  active: {},
+  cumdist: {},
+  square: {},
+  jti: {},
+  idm: {},
+}
 
 // var serverSiteAddress = debug ? 'localhost/Route_Management/ph/': siteAddress ;
 // var dataSourceMainLocation = serverSiteAddress + 'Data Sources/';
