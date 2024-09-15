@@ -199,6 +199,118 @@
             }
         }
 
+        function loadDataWorker() {
+            try {
+                if (window.Worker) {
+                    loadPointsWorker = new Worker(siteConfig.siteResourceFolder.javascript + '/loadPoint.js');
+
+                    loadPointsWorker.postMessage([
+                        'IDM POINT',
+                        siteConfig.siteAddress +
+                        siteConfig.siteDataFolder +
+                        dataSource._point.idmPointjson,
+                        'json',
+                        true
+                    ]);
+
+                    loadPointsWorker.postMessage([
+                        'IDM TRX',
+                        siteConfig.siteAddress +
+                        siteConfig.siteDataFolder +
+                        dataSource._transaction.idm
+                        , 'json', false
+                    ]);
+
+                    loadPointsWorker.postMessage([
+                        'JTI POINT',
+                        siteConfig.siteAddress +
+                        siteConfig.siteDataFolder +
+                        dataSource._point.jtiPointjson +
+                        wpCode + '.json'
+                        , 'json', true, 'szlatitude', 'szlongitude', 1
+                    ]);
+
+                    loadPointsWorker.postMessage([
+                        'JTI TRX',
+                        siteConfig.siteAddress +
+                        siteConfig.siteDataFolder +
+                        dataSource._transaction.bosnet +
+                        wpCode + '.json'
+                        , 'json', false
+                    ]);
+
+                    loadPointsWorker.postMessage([
+                        'JTI TRX L4W',
+                        siteConfig.siteAddress +
+                        siteConfig.siteDataFolder +
+                        dataSource._transaction.l4w +
+                        wpCode + '.json'
+                        , 'json', false
+                    ]);
+
+                    loadPointsWorker.postMessage([
+                        'POI POINT',
+                        siteConfig.siteAddress +
+                        siteConfig.siteDataFolder +
+                        dataSource._point.poiPoint
+                        , 'csv', true
+                    ]);
+
+                    loadPointsWorker.postMessage([
+                        'BILL POINT',
+                        siteConfig.siteAddress +
+                        siteConfig.siteDataFolder +
+                        dataSource._point.billboardPoint
+                        , 'xlsx', true, 'Lat', 'Lng'
+                    ]);
+
+                    loadPointsWorker.postMessage([
+                        'CAK POINT',
+                        siteConfig.siteAddress +
+                        siteConfig.siteDataFolder +
+                        dataSource._transaction.cakrawala
+                        , 'xlsx', false
+                    ]);
+
+
+                    loadPointsWorker.onmessage = (result) => {
+                        if (result.data.source == 'IDM POINT') {
+                            geoIdm = result.data.result;
+                            // TODO INIT VISUAL
+                        }
+                        else if (result.data.source == 'IDM TRX') {
+                            transactionIdm = result.data.result;
+                        }
+                        else if (result.data.source == 'JTI POINT') {
+                            geoJTI = result.data.result;
+                            // TODO INIT VISUAL
+                        }
+                        else if (result.data.source == 'JTI TRX') {
+                            transactionBosnet = result.data.result;
+                        }
+                        else if (result.data.source == 'JTI TRX L4W') {
+                            transactionL4w = result.data.result;
+                        }
+                        else if (result.data.source == 'POI POINT') {
+                            geoPoi = result.data.result;
+                        }
+                        else if (result.data.source == 'BILL POINT') {
+                            geoBillboard = result.data.result;
+                        }
+                        else if (result.data.source == 'CAK POINT') {
+                            transactionCakrawala = result.data.result;
+                            transactionCakrawalaFiltered = transactionCakrawala.filter((data) => data['Work Place'].slice(0, data['Work Place'].indexOf(' ')) == wpCode);
+                        }
+
+                    };
+
+                    // transaction5Week = transactionL4w.concat(transactionBosnet);
+                }
+            } catch (err) {
+                console.error('Unsupported browser for background threading. ' + err.message);
+            }
+        }
+
         /**
          * loadData is function to load data from URL and transform it into geoJson data type
          * @param callback      : callback function
@@ -221,47 +333,6 @@
                     dataSource._shp.sqBoundary +
                     dataSource._shp.sqBoundaries.javanusa
                     , 'shp', true);
-                // load Indomaret location data
-                geoIdm = await loadDataToArray(
-                    siteConfig.siteAddress +
-                    siteConfig.siteDataFolder +
-                    dataSource._point.idmPointjson
-                    , 'json', true);
-                // load POI location data
-                geoPoi = await loadDataToArray(
-                    siteConfig.siteAddress +
-                    siteConfig.siteDataFolder +
-                    dataSource._point.poiPoint
-                    , 'csv', true);
-                // load Billboard location data
-                geoBillboard = await loadDataToArray(
-                    siteConfig.siteAddress +
-                    siteConfig.siteDataFolder +
-                    dataSource._point.billboardPoint
-                    , 'xlsx', true, 'Lat', 'Lng');
-                // load Bosnet Customer location data
-                geoJTI = await loadDataToArray(
-                    siteConfig.siteAddress +
-                    siteConfig.siteDataFolder +
-                    dataSource._point.jtiPointjson +
-                    wpCode + '.json'
-                    , 'json', true, 'szlatitude', 'szlongitude', 1);
-                // load Bosnet Transaction for current week
-                transactionBosnet = await loadDataToArray(
-                    siteConfig.siteAddress +
-                    siteConfig.siteDataFolder +
-                    dataSource._transaction.bosnet +
-                    wpCode + '.json'
-                    , 'json', false);
-                // load Bosnet Transaction for last 4 weeks
-                transactionL4w = await loadDataToArray(
-                    siteConfig.siteAddress +
-                    siteConfig.siteDataFolder +
-                    dataSource._transaction.l4w +
-                    wpCode + '.json'
-                    , 'json', false);
-                // concatenate Bosnet transactions
-                transaction5Week = transactionL4w.concat(transactionBosnet);
                 // load JTI product mapping data
                 jtiProduct = await loadDataToArray(
                     siteConfig.siteAddress +
@@ -278,20 +349,7 @@
                 sobProductIdm = sobProduct.filter((product) => product['Source Data'] == 'IDM');
                 // filter SOB product for Cakrawala product
                 sobProductCakrawala = sobProduct.filter((product) => product['Source Data'] == 'Cakrawala');
-                // load Cakrawala data
-                transactionCakrawala = await loadDataToArray(
-                    siteConfig.siteAddress +
-                    siteConfig.siteDataFolder +
-                    dataSource._transaction.cakrawala
-                    , 'xlsx', false);
-                // filter Cakrawala data to specific workplace
-                transactionCakrawalaFiltered = transactionCakrawala.filter((data) => data['Work Place'].slice(0, data['Work Place'].indexOf(' ')) == wpCode);
-                // load Indomaret transaction data
-                transactionIdm = await loadDataToArray(
-                    siteConfig.siteAddress +
-                    siteConfig.siteDataFolder +
-                    dataSource._transaction.idm
-                    , 'json', false);
+                
                 // calling callback function
                 callback();
             } catch (err) {
@@ -408,7 +466,7 @@
                 layerJTI = new google.maps.Data({ map: map });
                 layerJTI.addGeoJson(geoJTI);
                 layerJTI.setStyle(function (feature) {
-                    var channel = feature.getProperty(siteConfig.bosnetCustCategory); 
+                    var channel = feature.getProperty(siteConfig.bosnetCustCategory);
                     var icn;
                     switch (channel) {
                         case siteConfig.channel.wholesale.label:
@@ -904,7 +962,7 @@
                     }
                 });
             }
-            
+
 
             dropSizeChart.data =
             {
@@ -1800,11 +1858,17 @@
         // Variable for info window (pop-up).
         let infowindow;
 
+        // Web Worker
+        let loadPointsWorker;
+        let chartCalculationWorker;
+
         // Functions call 
         initMap(function () {
-
             const customControl = initCustomControl();
             map.controls[google.maps.ControlPosition.RIGHT_TOP].push(customControl);
+
+            loadDataWorker();
+
 
             loadData(function () {
                 initMapVisual(function () {
