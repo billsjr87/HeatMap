@@ -16,6 +16,13 @@ const numberFormat = {
   region: 'en-US',
 }
 
+// Default color
+const color = {
+  black: '#000000',
+  white: '#FFFFFF',
+  gray: '#808080',
+}
+
 //SITE CONFIG
 const siteConfig = {
   siteAddress : environment == 'prd'? 'https://jticorp.sharepoint.com/sites/Sales_Operation/Heatmap' : 'http://localhost/Heatmap',
@@ -30,11 +37,36 @@ const siteConfig = {
   squareIdProperty: 'Square_C_1',
   squareCategoryProperty: 'Segment',
   bosnetCustCategory: 'szcategory_2',
-  colorWin: '#87C498',
-  colorExpand: '#96C0D6',
-  colorSustain: '#FFEEBD',
-  colorTactical: '#FBE3CD',
-  colorNI: '#F2F2F2',
+  segment: {
+    win: {
+      label: 'WIN',
+      color: '#87C498',
+    },
+    expand: {
+      label: 'EXPAND',
+      color: '#96C0D6',
+    },
+    sustain: {
+      label: 'SUSTAIN',
+      color: '#FFEEBD',
+    },
+    tactical: {
+      label: 'TACTICAL',
+      color: '#FBE3CD',
+    },
+    non_investable: {
+      label: 'NON-INVESTABLE',
+      color: '#F2F2F2',
+    },
+  },
+  channel: {
+    wholesale: {
+      label: 'WHOLESALE',
+    },
+    retail: {
+      label: 'RETAIL',
+    }
+  }
 };
 
 // MAP CONFIG
@@ -77,6 +109,7 @@ const dataSource = {
     bosnet: '/Transaction/BOSNET/',
     cakrawala: "/Transaction/CAKRAWALA/Summary Post Cakrawala-May'24.xlsb",
     idm: "/Transaction/IDM/idm_transaction_CAMEL.json",
+    l4w: "/Transaction/L4W/",
   },
   _mapping: {
     jtiProduct: '/Mapping/JTI Product Mapping.xlsx',
@@ -88,7 +121,7 @@ const dataSource = {
     billboardIcon: '/billboard.ico',
     jtiIcon: {
       ws: '/box.ico',
-      rt: '/store.ico',
+      rt: '/retail.ico',
     },
   },
   _default: {

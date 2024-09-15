@@ -150,9 +150,9 @@
                         <canvas class="" id="volume_page">
 
                         </canvas>
-                        <div class="d-none" id="dropsize_page">
+                        <canvas class="d-none" id="dropsize_page">
                             Content 2
-                        </div>
+                        </canvas>
                         <div class="d-none" id="ec_page">
                             Content 3
                         </div>
@@ -199,6 +199,13 @@
             }
         }
 
+        /**
+         * loadData is function to load data from URL and transform it into geoJson data type
+         * @param callback      : callback function
+         * Accepted file type   : zip (shp), json, csv, xlsx (inc. xlsb)
+         * Functions used       : shp(url), loadDataToArray(url, file_type, transform to geoJson boolean, latitude column name, longitude column name, 0/1 to convert string to number)
+         * Notes                : This is asyncronous function and using await to load the data.
+         * **/
         async function loadData(callback) {
             try {
                 // load workplace boundary shp file
@@ -206,120 +213,141 @@
                     siteConfig.siteAddress +
                     siteConfig.siteDataFolder +
                     dataSource._shp.wpBoundary
-                    , 'shp', true
-                );
+                    , 'shp', true);
                 // load square boundary shp file 
                 geoSquare = await shp(
                     siteConfig.siteAddress +
                     siteConfig.siteDataFolder +
                     dataSource._shp.sqBoundary +
                     dataSource._shp.sqBoundaries.javanusa
-                    , 'shp', true
-                );
+                    , 'shp', true);
+                // load Indomaret location data
                 geoIdm = await loadDataToArray(
                     siteConfig.siteAddress +
                     siteConfig.siteDataFolder +
                     dataSource._point.idmPointjson
                     , 'json', true);
+                // load POI location data
                 geoPoi = await loadDataToArray(
                     siteConfig.siteAddress +
                     siteConfig.siteDataFolder +
                     dataSource._point.poiPoint
                     , 'csv', true);
+                // load Billboard location data
                 geoBillboard = await loadDataToArray(
                     siteConfig.siteAddress +
                     siteConfig.siteDataFolder +
                     dataSource._point.billboardPoint
                     , 'xlsx', true, 'Lat', 'Lng');
-
+                // load Bosnet Customer location data
                 geoJTI = await loadDataToArray(
                     siteConfig.siteAddress +
                     siteConfig.siteDataFolder +
                     dataSource._point.jtiPointjson +
                     wpCode + '.json'
                     , 'json', true, 'szlatitude', 'szlongitude', 1);
-
+                // load Bosnet Transaction for current week
                 transactionBosnet = await loadDataToArray(
                     siteConfig.siteAddress +
                     siteConfig.siteDataFolder +
                     dataSource._transaction.bosnet +
                     wpCode + '.json'
                     , 'json', false);
-
+                // load Bosnet Transaction for last 4 weeks
+                transactionL4w = await loadDataToArray(
+                    siteConfig.siteAddress +
+                    siteConfig.siteDataFolder +
+                    dataSource._transaction.l4w +
+                    wpCode + '.json'
+                    , 'json', false);
+                // concatenate Bosnet transactions
+                transaction5Week = transactionL4w.concat(transactionBosnet);
+                // load JTI product mapping data
                 jtiProduct = await loadDataToArray(
                     siteConfig.siteAddress +
                     siteConfig.siteDataFolder +
                     dataSource._mapping.jtiProduct
                     , 'xlsx', false);
-
+                // load SOB product mapping data
                 sobProduct = await loadDataToArray(
                     siteConfig.siteAddress +
                     siteConfig.siteDataFolder +
                     dataSource._mapping.sobProduct
                     , 'xlsx', false);
+                // filter SOB product for Indomaret product
                 sobProductIdm = sobProduct.filter((product) => product['Source Data'] == 'IDM');
+                // filter SOB product for Cakrawala product
                 sobProductCakrawala = sobProduct.filter((product) => product['Source Data'] == 'Cakrawala');
-
+                // load Cakrawala data
                 transactionCakrawala = await loadDataToArray(
                     siteConfig.siteAddress +
                     siteConfig.siteDataFolder +
                     dataSource._transaction.cakrawala
                     , 'xlsx', false);
+                // filter Cakrawala data to specific workplace
                 transactionCakrawalaFiltered = transactionCakrawala.filter((data) => data['Work Place'].slice(0, data['Work Place'].indexOf(' ')) == wpCode);
-
+                // load Indomaret transaction data
                 transactionIdm = await loadDataToArray(
                     siteConfig.siteAddress +
                     siteConfig.siteDataFolder +
                     dataSource._transaction.idm
-                    , 'json', false
-                );
-
+                    , 'json', false);
+                // calling callback function
                 callback();
             } catch (err) {
                 console.error('Data failed to load: ' + err.message);
             }
         }
 
+        /**
+         * initMapVisual is function to populate visual to Google layer based on geoJson data
+         * @param callback      : callback function
+         * Layers created in this function have styling and addListener for click
+        **/
         async function initMapVisual(callback) {
             try {
-                // Workplace Boundary Layer
+                // Create layer for Workplace Boundary
                 layerWorkplaceBoundary = new google.maps.Data({ map: map });
+                // Adding geoJson geoWorkplace to layerWorkplaceBoundary
                 layerWorkplaceBoundary.addGeoJson(geoWorkplace);
+                // Adding style to layerWorkplaceBoundary
                 layerWorkplaceBoundary.setStyle(function (feature) {
                     return {
-                        fillColor: "gray",
                         fillOpacity: 0.0,
-                        strokeColor: "black",
+                        strokeColor: color.black,
                         strokeWeight: 1.0,
                         zIndex: 10,
                     };
                 });
 
-                // Square Boundary Layer
+                // Create layer for Square Boundary
                 layerSquareBoundary = new google.maps.Data({ map: map });
+                // Adding geoJson geoSquare to layerSquareBoundary
                 layerSquareBoundary.addGeoJson(geoSquare);
+                // Adding style to layerSquareBoundary
+                // Styling based on square segmentation (WIN, TACTICAL, SUSTAIN, EXPAND, and NON-INVESTABLE)
                 layerSquareBoundary.setStyle(function (feature) {
                     var segment = feature.getProperty(siteConfig.squareSegmentProperty);
                     var color;
                     var fillOp = 0.6;
                     switch (segment) {
-                        case "WIN":
-                            color = siteConfig.colorWin;
+                        case siteConfig.segment.win.label:
+                            color = siteConfig.segment.win.color;
                             break;
-                        case "TACTICAL":
-                            color = siteConfig.colorTactical;
+                        case siteConfig.segment.tactical.label:
+                            color = siteConfig.segment.tactical.color;
                             break;
-                        case "SUSTAIN":
-                            color = siteConfig.colorSustain;
+                        case siteConfig.segment.sustain.label:
+                            color = siteConfig.segment.sustain.color;
                             break;
-                        case "NON-INVESTABLE":
-                            color = siteConfig.colorNI;
+                        case siteConfig.segment.non_investable.label:
+                            color = siteConfig.segment.non_investable.color;
                             break;
-                        case "EXPAND":
-                            color = siteConfig.colorExpand;
+                        case siteConfig.segment.expand.label:
+                            color = siteConfig.segment.expand.color;
                             break;
                         default:
-                            color = 'gray';
+                            color = color.gray;
                             fillOp = 0.2;
                             break;
                     }
@@ -330,14 +358,17 @@
                         zIndex: 20,
                     };
                 });
-
+                // Adding listener click event to layerSquareBoundary, passing layer feature (specific square) as parameter
+                // This listener is trigger onClickFunction to show InfoWindows (pop-up)
                 layerSquareBoundary.addListener('click', (event) => {
                     onClickFunction(event.feature, 1);
                 });
 
-                // IDM Layer
+                // Create layer for Indomaret Points (store location)
                 layerIdm = new google.maps.Data({ map: map });
+                // Adding geoJson geoIdm to layerIdm
                 layerIdm.addGeoJson(geoIdm);
+                // Setting style for layerIdm
                 layerIdm.setStyle({
                     icon: siteConfig.siteResourceFolder.icon +
                         dataSource._icon.idmIcon,
@@ -345,13 +376,17 @@
                     zIndex: 30,
                     visible: false,
                 });
+                // Adding listener click event to layerIdm, passing layer feature (specific point) as parameter
+                // This listener is trigger onClickFunction to show InfoWindows (pop-up)
                 layerIdm.addListener('click', (event) => {
                     onClickFunction(event.feature, 3);
                 });
 
-                // POI Layer
+                // Create layer for Point Of Interest Points (POI location)
                 layerPoi = new google.maps.Data({ map: map });
+                // Adding geoJson geoPoi to layerPoi
                 layerPoi.addGeoJson(geoPoi);
+                // Setting style for layerPoi
                 layerPoi.setStyle({
                     icon: siteConfig.siteResourceFolder.icon +
                         dataSource._icon.poiIcon,
@@ -373,13 +408,13 @@
                 layerJTI = new google.maps.Data({ map: map });
                 layerJTI.addGeoJson(geoJTI);
                 layerJTI.setStyle(function (feature) {
-                    var channel = feature.getProperty(siteConfig.bosnetCustCategory);
+                    var channel = feature.getProperty(siteConfig.bosnetCustCategory); 
                     var icn;
                     switch (channel) {
-                        case 'WHOLESALE':
+                        case siteConfig.channel.wholesale.label:
                             icn = siteConfig.siteResourceFolder.icon + dataSource._icon.jtiIcon.ws;
                             break;
-                        case 'RETAIL':
+                        case siteConfig.channel.retail.label:
                             icn = siteConfig.siteResourceFolder.icon + dataSource._icon.jtiIcon.rt;
                             break;
 
@@ -420,8 +455,8 @@
                 var elmLinkNode = document.createElement('a');
 
                 var elmText;
-                elmLinkNode.setAttribute('class', 'dropdown-item'); // set attribute for a
-                elmLinkNode.setAttribute('href', '#'); // set attribute for a
+                elmLinkNode.setAttribute('class', 'dropdown-item');
+                elmLinkNode.setAttribute('href', '#');
                 elmLinkNode.setAttribute('id', item);
                 elmText = document.createTextNode(item);
                 elmLinkNode.addEventListener("click", (event) => {
@@ -703,22 +738,255 @@
         }
 
         function filterCategory(elm) {
-            if (infowindow.isOpen) { console.log(elm);
-            
+            if (infowindow.isOpen) {
+
                 var trElements = document.getElementById('infoWindow').children;
-                console.log(trElements);
-                
+
                 for (let index = 0; index < trElements.length; index++) {
-                    var check = trElements[index].getAttribute('data-category');
-                     
-                    if (check != elm && check !== null) {
-                        trElements[index].classList.add('d-none');
-                    } else {
-                        trElements[index].classList.remove('d-none');
+                    if (trElements[index].getAttribute('id') !== null) {
+                        if (trElements[index].getAttribute('id') == elm) {
+                            trElements[index].classList.remove('d-none');
+                        }
+                        else {
+                            trElements[index].classList.add('d-none');
+                        }
+
                     }
+
+                    if (trElements[index].getAttribute('data-category') !== null) {
+                        if (trElements[index].getAttribute('data-category') == elm) {
+                            trElements[index].classList.remove('d-none');
+                        }
+                        else {
+                            trElements[index].classList.add('d-none');
+                        }
+                    }
+
                 }
-                
+
             }
+            if (wpCode !== undefined) {
+                updateVolumeChart(elm);
+                updateDropSizeChart(elm);
+            }
+
+        }
+
+        function updateVolumeChart(elm) {
+            var dataset = new Array();
+            // TODO: CHECK IF WORKPLACE IS SELECTED.
+            var tempSquareFeatures = new Array();
+            layerSquareBoundary.forEach(feature => {
+                if (feature.getProperty('Id_Workpla') == wpCode) {
+                    tempSquareFeatures.push(feature);
+                }
+            });
+
+            var allTrx = transactionL4w.concat(transactionBosnet);
+
+            var allVolume = calculateVolume5Week(tempSquareFeatures, allTrx);
+
+            var filteredVolume = allVolume.filter(data => data['category'] == elm);
+
+            var total = [0, 0, 0, 0, 0];
+            for (let index = 0; index < 5; index++) {
+                filteredVolume.forEach(data => {
+                    if (data['WeekNumber'] == index + 1) {
+                        total[index] = total[index] + data['volume'];
+                    }
+                });
+            }
+
+            volumeChart.data =
+            {
+                labels: ['WK1', 'WK2', 'WK3', 'WK4', 'WK5'],
+                datasets: [{
+                    type: 'bar',
+                    label: siteConfig.segment.win.label,
+                    backgroundColor: siteConfig.segment.win.color,
+                    data: [
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 1)[0]['volume'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 2)[0]['volume'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 3)[0]['volume'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 4)[0]['volume'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 5)[0]['volume'],
+                    ],
+                    borderWidth: 1,
+                    order: 2,
+                }, {
+                    type: 'bar',
+                    label: siteConfig.segment.expand.label,
+                    backgroundColor: siteConfig.segment.expand.color,
+                    data: [
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 1)[0]['volume'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 2)[0]['volume'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 3)[0]['volume'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 4)[0]['volume'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 5)[0]['volume'],
+                    ],
+                    borderWidth: 1,
+                    order: 2,
+                }, {
+                    type: 'bar',
+                    label: siteConfig.segment.sustain.label,
+                    backgroundColor: siteConfig.segment.sustain.color,
+                    data: [
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 1)[0]['volume'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 2)[0]['volume'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 3)[0]['volume'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 4)[0]['volume'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 5)[0]['volume'],
+                    ],
+                    borderWidth: 1,
+                    order: 2,
+                }, {
+                    type: 'bar',
+                    label: siteConfig.segment.tactical.label,
+                    backgroundColor: siteConfig.segment.tactical.color,
+                    data: [
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 1)[0]['volume'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 2)[0]['volume'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 3)[0]['volume'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 4)[0]['volume'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 5)[0]['volume'],
+                    ],
+                    borderWidth: 1,
+                    order: 2,
+                }, {
+                    type: 'bar',
+                    label: siteConfig.segment.non_investable.label,
+                    backgroundColor: siteConfig.segment.non_investable.color,
+                    data: [
+                        allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 1)[0]['volume'],
+                        allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 2)[0]['volume'],
+                        allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 3)[0]['volume'],
+                        allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 4)[0]['volume'],
+                        allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 5)[0]['volume'],
+                    ],
+                    borderWidth: 1,
+                    order: 2,
+                }, {
+                    type: 'line',
+                    label: 'TOTAL',
+                    backgroundColor: color.gray,
+                    data: total,
+                    borderWidth: 1,
+                    order: 1,
+                }]
+            }
+
+            volumeChart.update();
+
+
+        }
+
+        function updateDropSizeChart(elm) {
+            var dataset = new Array();
+            // TODO: CHECK IF WORKPLACE IS SELECTED.
+            var tempSquareFeatures = new Array();
+            layerSquareBoundary.forEach(feature => {
+                if (feature.getProperty('Id_Workpla') == wpCode) {
+                    tempSquareFeatures.push(feature);
+                }
+            });
+
+            var allTrx = transactionL4w.concat(transactionBosnet);
+
+            var allVolume = calculateDropSize5Week(tempSquareFeatures, allTrx);
+
+            var filteredVolume = allVolume.filter(data => data['category'] == elm);
+
+            var total = [0, 0, 0, 0, 0];
+            for (let index = 0; index < 5; index++) {
+                filteredVolume.forEach(data => {
+                    if (data['WeekNumber'] == index + 1) {
+                        total[index] = total[index] + data['ds'];
+                    }
+                });
+            }
+            
+
+            dropSizeChart.data =
+            {
+                labels: ['WK1', 'WK2', 'WK3', 'WK4', 'WK5'],
+                datasets: [{
+                    type: 'bar',
+                    label: siteConfig.segment.win.label,
+                    backgroundColor: siteConfig.segment.win.color,
+                    data: [
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 1)[0]['ds'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 2)[0]['ds'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 3)[0]['ds'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 4)[0]['ds'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 5)[0]['ds'],
+                    ],
+                    borderWidth: 1,
+                    order: 2,
+                }, {
+                    type: 'bar',
+                    label: siteConfig.segment.expand.label,
+                    backgroundColor: siteConfig.segment.expand.color,
+                    data: [
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 1)[0]['ds'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 2)[0]['ds'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 3)[0]['ds'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 4)[0]['ds'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 5)[0]['ds'],
+                    ],
+                    borderWidth: 1,
+                    order: 2,
+                }, {
+                    type: 'bar',
+                    label: siteConfig.segment.sustain.label,
+                    backgroundColor: siteConfig.segment.sustain.color,
+                    data: [
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 1)[0]['ds'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 2)[0]['ds'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 3)[0]['ds'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 4)[0]['ds'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 5)[0]['ds'],
+                    ],
+                    borderWidth: 1,
+                    order: 2,
+                }, {
+                    type: 'bar',
+                    label: siteConfig.segment.tactical.label,
+                    backgroundColor: siteConfig.segment.tactical.color,
+                    data: [
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 1)[0]['ds'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 2)[0]['ds'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 3)[0]['ds'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 4)[0]['ds'],
+                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 5)[0]['ds'],
+                    ],
+                    borderWidth: 1,
+                    order: 2,
+                }, {
+                    type: 'bar',
+                    label: siteConfig.segment.non_investable.label,
+                    backgroundColor: siteConfig.segment.non_investable.color,
+                    data: [
+                        allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 1)[0]['ds'],
+                        allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 2)[0]['ds'],
+                        allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 3)[0]['ds'],
+                        allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 4)[0]['ds'],
+                        allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 5)[0]['ds'],
+                    ],
+                    borderWidth: 1,
+                    order: 2,
+                }, {
+                    type: 'line',
+                    label: 'TOTAL',
+                    backgroundColor: color.gray,
+                    data: total,
+                    borderWidth: 1,
+                    order: 1,
+                }]
+            }
+
+            dropSizeChart.update();
+
+
         }
 
         function onClickFunction(feature, type) {
@@ -765,27 +1033,50 @@
                 tableRow.appendChild(tableHead);
                 header.appendChild(tableRow);
 
-                for (let index = 0; index < 4; index++) {
+                volume.forEach(dt => {
+                    var tableRowSquare = document.createElement('tr');
+                    var label = document.createElement('td');
+                    var value = document.createElement('td');
+                    tableRowSquare.id = dt['category'];
+                    label.innerText = 'Volume Shipment';
+                    value.innerText = dt['volume'];
+                    if (tableRowSquare.getAttribute('id') !== 'ALL') {
+                        tableRowSquare.classList.add('d-none');
+                    }
+                    tableRowSquare.appendChild(label);
+                    tableRowSquare.appendChild(value);
+                    body.appendChild(tableRowSquare);
+                });
+
+                dropSize.forEach(dt => {
+                    var tableRowSquare = document.createElement('tr');
+                    var label = document.createElement('td');
+                    var value = document.createElement('td');
+                    tableRowSquare.id = dt['category'];
+                    label.innerText = 'Dropsize';
+                    value.innerText = dt['ds'].toLocaleString(numberFormat.region,
+                        {
+                            maximumFractionDigits: numberFormat.maxDecimalDigit,
+                            minimumFractionDigits: numberFormat.minDecimalDigit,
+                        },);
+                    if (tableRowSquare.getAttribute('id') !== 'ALL') {
+                        tableRowSquare.classList.add('d-none');
+                    }
+                    tableRowSquare.appendChild(label);
+                    tableRowSquare.appendChild(value);
+                    body.appendChild(tableRowSquare);
+                });
+
+                for (let index = 0; index < 2; index++) {
                     var tableRowSquare = document.createElement('tr');
                     var label = document.createElement('td');
                     var value = document.createElement('td');
                     switch (index) {
                         case 0:
-                            label.innerText = 'Volume Shipment'
-                            value.innerText = volume;
-                            break;
-                        case 1:
-                            label.innerText = 'Dropsize'
-                            value.innerText = dropSize.toLocaleString(numberFormat, {
-                                minimumFractionDigits: numberFormat.minDecimalDigit,
-                                maximumFractionDigits: numberFormat.maxDecimalDigit,
-                            },);
-                            break;
-                        case 2:
                             label.innerText = '# of GT Stores'
                             value.innerText = gtStore;
                             break;
-                        case 3:
+                        case 1:
                             label.innerText = '# of IDM Stores'
                             value.innerText = idmStore;
                             break;
@@ -824,7 +1115,8 @@
                 infowindow.setContent(table);
                 infowindow.setPosition(mid);
                 infowindow.open(map);
-            } else if (type == 2 && feature.getGeometry().getType() == 'Point') {
+            }
+            else if (type == 2 && feature.getGeometry().getType() == 'Point') {
 
                 tableHead.innerText = "Store Category : " + feature.getProperty(siteConfig.bosnetCustCategory);
                 tableRow.appendChild(tableHead);
@@ -898,7 +1190,8 @@
                 infowindow.setContent(table);
                 infowindow.setPosition(feature.getGeometry().get());
                 infowindow.open(map);
-            } else if (type == 3 && feature.getGeometry().getType() == 'Point') {
+            }
+            else if (type == 3 && feature.getGeometry().getType() == 'Point') {
                 tableHead.innerText = "Store Category : INDOMARET";
                 tableRow.appendChild(tableHead);
                 header.appendChild(tableRow);
@@ -952,36 +1245,200 @@
             return !status;
         }
 
+        function calculateVolume5Week(squareArray, dataArray) {
+            var result = new Array();
+            var filteredSelection = new Array();
+            var squareSegment;
+
+            // filter transactional array and put into filteredSelection
+            // output: filtered transactional array
+            squareArray.forEach(square => {
+                var sw = square.getGeometry().getAt(0).getAt(0);
+                var ne = square.getGeometry().getAt(0).getAt(2);
+                var bound = new google.maps.LatLngBounds(sw, ne);
+                var squareSegment = square.getProperty(siteConfig.squareSegmentProperty);
+
+                layerJTI.forEach(feature => {
+                    if (bound.contains(feature.getGeometry().get())) {
+                        var temp = dataArray.filter(data => data['CustomerId'] == feature.getProperty('szCustId'));
+                        if (temp.length > 0) {
+                            temp.forEach(dt => {
+                                dt['SquareSegment'] = squareSegment;
+                                filteredSelection.push(dt);
+                            })
+                        }
+                    }
+                });
+            });
+
+            // add new property named Category for segment category (SKM, SKT, SPM, etc.)
+            filteredSelection.forEach(data => {
+                var cat = lookup(jtiProduct, data['CategoryProduct'], 'KATEGORI PRODUK', 'Segment');
+                data['Category'] = cat;
+            });
+
+            // Calculate each Category (SKM, SPM, SKT, etc.)
+            squareSegmentationFilter.forEach(sqSegment => {
+                categoryFilter.forEach(category => {
+                    for (let index = 1; index <= 5; index++) {
+                        var sum = 0;
+                        var temp = filteredSelection.filter(data => data['Category'] == category && data['WeekNumber'] == index && data['SquareSegment'] == sqSegment);
+                        if (temp.length > 0) {
+                            temp.forEach(dt => {
+                                sum += dt['Volume'];
+                            })
+                        }
+                        result.push({ 'WeekNumber': index, 'squareSegment': sqSegment, 'category': category, 'volume': sum });
+                    }
+                });
+            });
+
+            return result;
+        }
+
+        function calculateDropSize5Week(squareArray, dataArray) {
+            var result = new Array();
+            var filteredSelection = new Array();
+            var squareSegment;
+
+            // filter transactional array and put into filteredSelection
+            // output: filtered transactional array
+            squareArray.forEach(square => {
+                var sw = square.getGeometry().getAt(0).getAt(0);
+                var ne = square.getGeometry().getAt(0).getAt(2);
+                var bound = new google.maps.LatLngBounds(sw, ne);
+                var squareSegment = square.getProperty(siteConfig.squareSegmentProperty);
+
+                layerJTI.forEach(feature => {
+                    if (bound.contains(feature.getGeometry().get())) {
+                        var temp = dataArray.filter(data => data['CustomerId'] == feature.getProperty('szCustId'));
+                        if (temp.length > 0) {
+                            temp.forEach(dt => {
+                                dt['SquareSegment'] = squareSegment;
+                                filteredSelection.push(dt);
+                            })
+                        }
+                    }
+                });
+            });
+
+            // add new property named Category for segment category (SKM, SKT, SPM, etc.)
+            filteredSelection.forEach(data => {
+                var cat = lookup(jtiProduct, data['CategoryProduct'], 'KATEGORI PRODUK', 'Segment');
+                data['Category'] = cat;
+            });
+
+            // Calculate each Category (SKM, SPM, SKT, etc.)
+            squareSegmentationFilter.forEach(sqSegment => {
+                categoryFilter.forEach(category => {
+                    for (let index = 1; index <= 5; index++) {
+                        var sum = 0;
+                        var count = 0;
+                        var ds = 0;
+                        var temp = filteredSelection.filter(data => data['Category'] == category && data['WeekNumber'] == index && data['SquareSegment'] == sqSegment);
+                        if (temp.length > 0) {
+                            temp.forEach(dt => {
+                                sum += dt['Volume'];
+                                count += dt['EffectiveCall'];
+                            })
+                        }
+                        ds = sum / count;
+                        result.push({ 'WeekNumber': index, 'squareSegment': sqSegment, 'category': category, 'ds': ds });
+                    }
+                });
+            });
+
+            return result;
+        }
+
         function calculateVolume(bound) {
-            var sum = 0;
+            var result = new Array();
+            var filteredSelection = new Array();
             layerJTI.forEach(feature => {
                 if (bound.contains(feature.getGeometry().get())) {
-                    var filteredSelection = transactionBosnet.filter(data => data['CustomerId'] == feature.getProperty('szCustId'));
-                    if (filteredSelection.length > 0) {
-                        filteredSelection.forEach(dt => {
-                            sum += dt['Volume'];
-                        });
+                    var temp = transactionBosnet.filter(data => data['CustomerId'] == feature.getProperty('szCustId'));
+                    if (temp.length > 0) {
+                        temp.forEach(dt => {
+                            filteredSelection.push(dt);
+                        })
                     }
                 }
             });
-            return sum;
+
+            filteredSelection.forEach(data => {
+                var cat = lookup(jtiProduct, data['CategoryProduct'], 'KATEGORI PRODUK', 'Segment');
+                data['Category'] = cat;
+            });
+
+            categoryFilter.forEach(category => {
+                var sum = 0;
+                var temp = filteredSelection.filter(data => data['Category'] == category);
+                if (temp.length > 0) {
+                    temp.forEach(dt => {
+                        sum += dt['Volume'];
+                    })
+                }
+                result.push({ 'category': category, 'volume': sum });
+            });
+
+            if (result.length > 0) {
+                var sum = 0;
+                result.forEach(data => {
+                    sum += data['volume'];
+                });
+                result.push({ 'category': 'ALL', 'volume': sum });
+            }
+
+            return result;
         }
 
         function calculateDropSize(bound) {
-            var sum = 0;
-            var count = 0;
+            var result = new Array();
+            var filteredSelection = new Array();
             layerJTI.forEach(feature => {
                 if (bound.contains(feature.getGeometry().get())) {
-                    var filteredSelection = transactionBosnet.filter(data => data['CustomerId'] == feature.getProperty('szCustId'));
-                    if (filteredSelection.length > 0) {
-                        filteredSelection.forEach(dt => {
-                            sum += dt['Volume'];
-                            count += dt['EffectiveCall'];
+                    var temp = transactionBosnet.filter(data => data['CustomerId'] == feature.getProperty('szCustId'));
+                    if (temp.length > 0) {
+                        temp.forEach(data => {
+                            filteredSelection.push(data);
                         });
                     }
                 }
             });
-            return sum / count;
+
+            filteredSelection.forEach(data => {
+                var cat = lookup(jtiProduct, data['CategoryProduct'], 'KATEGORI PRODUK', 'Segment');
+                data['Category'] = cat;
+            });
+
+            categoryFilter.forEach(category => {
+                var sum = 0;
+                var count = 0;
+                var ds = 0;
+                var temp = filteredSelection.filter(data => data['Category'] == category);
+                if (temp.length > 0) {
+                    temp.forEach(dt => {
+                        sum += dt['Volume'];
+                        count += dt['EffectiveCall'];
+                    })
+                }
+                ds = sum / count;
+                result.push({ 'category': category, 'volume': sum, 'ec': count, 'ds': ds });
+            });
+
+            if (result.length > 0) {
+                var sum = 0;
+                var count = 0;
+                var ds = 0;
+                result.forEach(data => {
+                    sum += data['volume'];
+                    count += data['ec'];
+                });
+                ds = sum / count;
+                result.push({ 'category': 'ALL', 'volume': sum, 'ec': count, 'ds': ds });
+            }
+
+            return result;
         }
 
         function calculateGTstore(bound) {
@@ -1041,6 +1498,18 @@
     </script>
 
     <script>/** ADDTIONAL FUNCTIONS **/
+        function lookup(arr, id, src, target) {
+            var result;
+            arr.forEach((item) => {
+                if (item[src] == id) {
+                    result = item[target];
+                } else {
+                    return;
+                }
+            });
+            return result;
+        }
+
         async function loadDataToArray(fileLoc, fileType, geo = false, lat = "Latitude", lng = "Longitude", convert = 0) {
             if (geo) {
                 if (fileType && fileType == 'xlsx') {
@@ -1283,6 +1752,8 @@
         let layerJTIStatus = false;
 
         let transactionBosnet;
+        let transactionL4w;
+        let transaction5Week;
         let transactionCakrawala;
         let transactionCakrawalaFiltered;
         let transactionIdm;
@@ -1322,28 +1793,9 @@
         let elmAPoi;
         let elmABill;
 
-        new Chart(volumePage, {
-            type: 'bar',
-            data: {
-                labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
-                datasets: [{
-                    label: 'Win',
-                    data: [12, 19, 3, 5, 2, 3],
-                    borderWidth: 1
-                }, {
-                    label: 'Expand',
-                    data: [12, 19, 3, 5, 2, 3],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
+        // Variable for Charts
+        var volumeChart = new Chart(volumePage);
+        var dropSizeChart = new Chart(dropsizePage);
 
         // Variable for info window (pop-up).
         let infowindow;
