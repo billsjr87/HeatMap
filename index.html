@@ -145,17 +145,47 @@
                                 <li class="page-item">
                                     <a class="page-link" href="#" id="ec_link">Effective Call (%)</a>
                                 </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="#" id="active_outlet_link">Active Outlet (%)</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="#" id="cum_dis_link">Cumulative Distribution</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="#" id="square_summary_link">Square Summary</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="#" id="jti_store_link">JTI Store</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="#" id="idm_store_link">IDM Store</a>
+                                </li>
                             </ul>
                         </nav>
-                        <canvas class="" id="volume_page">
+                        <canvas class="text-reset" id="volume_page">
 
                         </canvas>
-                        <canvas class="d-none" id="dropsize_page">
-                            Content 2
+                        <canvas class="d-none text-reset" id="dropsize_page">
+                            
                         </canvas>
-                        <div class="d-none" id="ec_page">
-                            Content 3
-                        </div>
+                        <canvas class="d-none text-reset" id="ec_page">
+                            Content: Effective Call (%)
+                        </canvas>
+                        <canvas class="d-none text-reset" id="active_outlet_page">
+                            Content: Active Outlet (%)
+                        </canvas>
+                        <canvas class="d-none text-reset" id="cum_dis_page">
+                            Content: Cumulative Distribution
+                        </canvas>
+                        <canvas class="d-none text-reset" id="square_summary_page">
+                            Content: Square Summary
+                        </canvas>
+                        <canvas class="d-none text-reset" id="jti_store_page">
+                            Content: JTI Store
+                        </canvas>
+                        <canvas class="d-none text-reset" id="idm_store_page">
+                            Content: IDM Store
+                        </canvas>
                     </div>
 
                 </div>
@@ -202,9 +232,10 @@
         function loadDataWorker() {
             try {
                 if (window.Worker) {
-                    loadPointsWorker = new Worker(siteConfig.siteResourceFolder.javascript + '/loadPoint.js');
+                    loadWorker = new Worker(siteConfig.siteResourceFolder.javascript + '/loadPoint.js');
 
-                    loadPointsWorker.postMessage([
+                    // Calling Web Worker to load IDM POINT
+                    loadWorker.postMessage([
                         'IDM POINT',
                         siteConfig.siteAddress +
                         siteConfig.siteDataFolder +
@@ -213,7 +244,8 @@
                         true
                     ]);
 
-                    loadPointsWorker.postMessage([
+                    // Calling Web Worker to load IDM TRX
+                    loadWorker.postMessage([
                         'IDM TRX',
                         siteConfig.siteAddress +
                         siteConfig.siteDataFolder +
@@ -221,7 +253,8 @@
                         , 'json', false
                     ]);
 
-                    loadPointsWorker.postMessage([
+                    // Calling Web Worker to load JTI POINT
+                    loadWorker.postMessage([
                         'JTI POINT',
                         siteConfig.siteAddress +
                         siteConfig.siteDataFolder +
@@ -230,7 +263,8 @@
                         , 'json', true, 'szlatitude', 'szlongitude', 1
                     ]);
 
-                    loadPointsWorker.postMessage([
+                    // Calling Web Worker to load JTI TRX
+                    loadWorker.postMessage([
                         'JTI TRX',
                         siteConfig.siteAddress +
                         siteConfig.siteDataFolder +
@@ -239,7 +273,8 @@
                         , 'json', false
                     ]);
 
-                    loadPointsWorker.postMessage([
+                    // Calling Web Worker to load JTI TRX L4W
+                    loadWorker.postMessage([
                         'JTI TRX L4W',
                         siteConfig.siteAddress +
                         siteConfig.siteDataFolder +
@@ -248,7 +283,8 @@
                         , 'json', false
                     ]);
 
-                    loadPointsWorker.postMessage([
+                    // Calling Web Worker to load POI POINT
+                    loadWorker.postMessage([
                         'POI POINT',
                         siteConfig.siteAddress +
                         siteConfig.siteDataFolder +
@@ -256,7 +292,8 @@
                         , 'csv', true
                     ]);
 
-                    loadPointsWorker.postMessage([
+                    // Calling Web Worker to load BILL POINT
+                    loadWorker.postMessage([
                         'BILL POINT',
                         siteConfig.siteAddress +
                         siteConfig.siteDataFolder +
@@ -264,26 +301,79 @@
                         , 'xlsx', true, 'Lat', 'Lng'
                     ]);
 
-                    loadPointsWorker.postMessage([
-                        'CAK POINT',
+                    // Calling Web Worker to load CAK TRX
+                    loadWorker.postMessage([
+                        'CAK TRX',
                         siteConfig.siteAddress +
                         siteConfig.siteDataFolder +
                         dataSource._transaction.cakrawala
                         , 'xlsx', false
                     ]);
 
+                    // Calling Web Worker to load JTI PRODUCT
+                    loadWorker.postMessage([
+                        'JTI PRODUCT',
+                        siteConfig.siteAddress +
+                        siteConfig.siteDataFolder +
+                        dataSource._mapping.jtiProduct
+                        , 'xlsx', false
+                    ]);
 
-                    loadPointsWorker.onmessage = (result) => {
+                    // Calling Web Worker to load SOB PRODUCT
+                    loadWorker.postMessage([
+                        'SOB PRODUCT',
+                        siteConfig.siteAddress +
+                        siteConfig.siteDataFolder +
+                        dataSource._mapping.sobProduct
+                        , 'xlsx', false
+                    ]);
+
+                    // Web Worker Result listener
+                    loadWorker.onmessage = (result) => {
                         if (result.data.source == 'IDM POINT') {
                             geoIdm = result.data.result;
-                            // TODO INIT VISUAL
+                            layerIdm = initVisual(layerIdm, geoIdm, {
+                                icon: siteConfig.siteResourceFolder.icon +
+                                    dataSource._icon.idmIcon,
+                                opacity: 1,
+                                zIndex: 30,
+                                visible: false,
+                            });
+                            layerIdm.addListener('click', (event) => {
+                                onClickFunction(event.feature, 3);
+                            });
                         }
                         else if (result.data.source == 'IDM TRX') {
                             transactionIdm = result.data.result;
                         }
                         else if (result.data.source == 'JTI POINT') {
                             geoJTI = result.data.result;
-                            // TODO INIT VISUAL
+                            layerJTI = initVisual(layerJTI, geoJTI);
+                            layerJTI.setStyle(function (feature) {
+                                var channel = feature.getProperty(siteConfig.bosnetCustCategory);
+                                var icn;
+                                switch (channel) {
+                                    case siteConfig.channel.wholesale.label:
+                                        icn = siteConfig.siteResourceFolder.icon + dataSource._icon.jtiIcon.ws;
+                                        break;
+                                    case siteConfig.channel.retail.label:
+                                        icn = siteConfig.siteResourceFolder.icon + dataSource._icon.jtiIcon.rt;
+                                        break;
+
+                                    default:
+                                        break;
+                                }
+                                return {
+                                    icon: icn,
+                                    opacity: 1,
+                                    zIndex: 60,
+                                    visible: false,
+                                }
+
+                            });
+                            layerJTI.addListener('click', (event) => {
+                                onClickFunction(event.feature, 2);
+                            });
                         }
                         else if (result.data.source == 'JTI TRX') {
                             transactionBosnet = result.data.result;
@@ -293,22 +383,104 @@
                         }
                         else if (result.data.source == 'POI POINT') {
                             geoPoi = result.data.result;
+                            layerPoi = initVisual(layerPoi, geoPoi, {
+                                icon: siteConfig.siteResourceFolder.icon +
+                                    dataSource._icon.poiIcon,
+                                opacity: 1,
+                                zIndex: 40,
+                                visible: false,
+                            });
                         }
                         else if (result.data.source == 'BILL POINT') {
                             geoBillboard = result.data.result;
+                            layerBillboard = initVisual(layerBillboard, geoBillboard, {
+                                icon: siteConfig.siteResourceFolder.icon +
+                                    dataSource._icon.billboardIcon,
+                                opacity: 1,
+                                zIndex: 50,
+                                visible: false,
+                            });
                         }
-                        else if (result.data.source == 'CAK POINT') {
+                        else if (result.data.source == 'CAK TRX') {
                             transactionCakrawala = result.data.result;
                             transactionCakrawalaFiltered = transactionCakrawala.filter((data) => data['Work Place'].slice(0, data['Work Place'].indexOf(' ')) == wpCode);
                         }
-
+                        // JTI PRODUCT result and initiate Category Filter
+                        else if (result.data.source == 'JTI PRODUCT') {
+                            jtiProduct = result.data.result;
+                            jtiProduct.forEach(data => {
+                                var temp = data['Segment'];
+                                if (categoryFilter.length != 0 && categoryFilter.includes(temp)) {
+                                    return;
+                                } else {
+                                    categoryFilter.push(temp);
+                                }
+                            });
+                            initFilter(elmCategoryFilter, categoryFilter);
+                        }
+                        else if (result.data.source == 'SOB PRODUCT') {
+                            sobProduct = result.data.result;
+                            sobProductIdm = sobProduct.filter((product) => product['Source Data'] == 'IDM');
+                            sobProductCakrawala = sobProduct.filter((product) => product['Source Data'] == 'Cakrawala');
+                        }
                     };
 
-                    // transaction5Week = transactionL4w.concat(transactionBosnet);
+                    // TODO : Find a way to identify both JTI TRX and JTI TRX L4W initiated, then combine the result to transactionAll
                 }
             } catch (err) {
                 console.error('Unsupported browser for background threading. ' + err.message);
             }
+        }
+
+        /**
+         * initVisual is function to draw geo spatial data in Google Map Data Layer
+         * @param layer : Data Layer variable to be initiated inside the function
+         * @param data  : GeoJson variable to added into Data Layer
+         * @param style : Data Layer styling option to be implemented
+         * @response    : Google Map Data Layer
+         * Notes        : @param style can be set outside this function
+         **/
+        function initVisual(layer, data, style) {
+            layer = new google.maps.Data({ map: map });
+            layer.addGeoJson(data);
+            layer.setStyle(function (feature) {
+                return style;
+            });
+            return layer;
+        }
+
+        /**
+         * initFilter is function to populate filters on the top of the pages
+         * @param domElement    : DOM HTML Element of <ul> for the dropdown list
+         * @param dropdownArray : Array of Strings values to populate the dropdown
+         * Notes                : Each of dropdown element have Click event listener that trigger onFilterClick function, passing the id of domElement and id from dropdownArray 
+        **/
+        function initFilter(domElement, dropdownArray) {
+            domElement.innerHTML = '';
+            var elmListCategoryNode;
+
+            dropdownArray.forEach(item => {
+                elmListCategoryNode = document.createElement('li');
+                var elmLinkNode = document.createElement('a');
+
+                var elmText;
+                elmLinkNode.setAttribute('class', 'dropdown-item');
+                elmLinkNode.setAttribute('href', '#');
+                elmLinkNode.setAttribute('id', item);
+                elmText = document.createTextNode(item);
+                domElement.setAttribute('style', 'max-height: 400px; overflow-y: auto;')
+                elmLinkNode.addEventListener("click", (event) => {
+                    onFilterClick(event.target.id, domElement.id);
+                });
+                elmLinkNode.appendChild(elmText);
+                elmListCategoryNode.appendChild(elmLinkNode);
+                domElement.appendChild(elmListCategoryNode);
+            });
+        }
+
+        function onFilterClick(elementId, parentId) {
+            console.log(elementId);
+            console.log(parentId);
         }
 
         /**
@@ -320,307 +492,384 @@
          * **/
         async function loadData(callback) {
             try {
-                // load workplace boundary shp file
-                geoWorkplace = await shp(
+                // Load workplace boundary shp file
+                layerWorkplaceBoundary = await shp(
                     siteConfig.siteAddress +
                     siteConfig.siteDataFolder +
                     dataSource._shp.wpBoundary
-                    , 'shp', true);
-                // load square boundary shp file 
-                geoSquare = await shp(
+                    , 'shp', true)
+                    // Initiate visual for loaded workplace boundary shp file 
+                    .then(result => {
+                        return initVisual(layerWorkplaceBoundary, result, {
+                            fillOpacity: 0.0,
+                            strokeColor: color.black,
+                            strokeWeight: 1.0,
+                            zIndex: 10,
+                        });
+                    })
+                    .catch(error => console.error(error));
+                // Load square boundary shp file then initiate visual and add listener
+                layerSquareBoundary = await shp(
                     siteConfig.siteAddress +
                     siteConfig.siteDataFolder +
                     dataSource._shp.sqBoundary +
                     dataSource._shp.sqBoundaries.javanusa
-                    , 'shp', true);
-                // load JTI product mapping data
-                jtiProduct = await loadDataToArray(
-                    siteConfig.siteAddress +
-                    siteConfig.siteDataFolder +
-                    dataSource._mapping.jtiProduct
-                    , 'xlsx', false);
-                // load SOB product mapping data
-                sobProduct = await loadDataToArray(
-                    siteConfig.siteAddress +
-                    siteConfig.siteDataFolder +
-                    dataSource._mapping.sobProduct
-                    , 'xlsx', false);
-                // filter SOB product for Indomaret product
-                sobProductIdm = sobProduct.filter((product) => product['Source Data'] == 'IDM');
-                // filter SOB product for Cakrawala product
-                sobProductCakrawala = sobProduct.filter((product) => product['Source Data'] == 'Cakrawala');
-                
-                // calling callback function
+                    , 'shp', true)
+                    // Initiate visual for loaded square boundary shp file
+                    .then(result => {
+                        var fillOp = 0.6;
+                        layerSquareBoundary = initVisual(layerSquareBoundary, result);
+                        layerSquareBoundary.setStyle((feature) => {
+                            var segment = feature.getProperty(siteConfig.squareSegmentProperty);
+                            var color;
+                            switch (segment) {
+                                case siteConfig.segment.win.label:
+                                    color = siteConfig.segment.win.color;
+                                    break;
+                                case siteConfig.segment.tactical.label:
+                                    color = siteConfig.segment.tactical.color;
+                                    break;
+                                case siteConfig.segment.sustain.label:
+                                    color = siteConfig.segment.sustain.color;
+                                    break;
+                                case siteConfig.segment.non_investable.label:
+                                    color = siteConfig.segment.non_investable.color;
+                                    break;
+                                case siteConfig.segment.expand.label:
+                                    color = siteConfig.segment.expand.color;
+                                    break;
+                                default:
+                                    color = color.gray;
+                                    fillOp = 0.2;
+                                    break;
+                            }
+                            return {
+                                fillColor: color,
+                                fillOpacity: fillOp,
+                                strokeWeight: 0.1,
+                                zIndex: 20,
+                            };
+                        });
+                        layerSquareBoundary.addListener('click', (event) => {
+                            onClickFunction(event.feature, 1);
+                        });
+                        // Get unique values of Square Segment and stored in squareSegmentationFilter
+                        layerSquareBoundary.forEach(feature => {
+                            var temp = feature.getProperty(siteConfig.squareSegmentProperty);
+                            if (squareSegmentationFilter.length != 0 && squareSegmentationFilter.includes(temp)) {
+                                return;
+                            } else {
+                                squareSegmentationFilter.push(temp);
+                            }
+                        });
+                        // Get unique values of Square Id and stored in squareIdFilter
+                        layerSquareBoundary.forEach(feature => {
+                            var temp = feature.getProperty(siteConfig.squareIdProperty);
+                            if (squareIdFilter.length != 0 && squareIdFilter.includes(temp)) {
+                                return;
+                            } else {
+                                squareIdFilter.push(temp);
+                            }
+                        });
+                        // Get unique values of Square Category and stored in squareCategoryFilter
+                        layerSquareBoundary.forEach(feature => {
+                            var temp = feature.getProperty(siteConfig.squareCategoryProperty);
+                            if (squareCategoryFilter.length != 0 && squareCategoryFilter.includes(temp)) {
+                                return;
+                            } else {
+                                squareCategoryFilter.push(temp);
+                            }
+                        });
+                        // Call initFilter to populate dropdown filter on top page
+                        initFilter(elmSquareCategoryFilter, squareCategoryFilter);
+                        initFilter(elmSquareSegmentFilter, squareSegmentationFilter);
+                        initFilter(elmSquareIdFilter, squareIdFilter);
+
+                        return layerSquareBoundary;
+                    })
+                    .catch(error => console.error(error));
+                // Calling callback function
                 callback();
             } catch (err) {
                 console.error('Data failed to load: ' + err.message);
             }
         }
 
-        /**
+        /** !!!!! UNUSED !!!!!
          * initMapVisual is function to populate visual to Google layer based on geoJson data
          * @param callback      : callback function
          * Layers created in this function have styling and addListener for click
         **/
         async function initMapVisual(callback) {
             try {
-                // Create layer for Workplace Boundary
-                layerWorkplaceBoundary = new google.maps.Data({ map: map });
-                // Adding geoJson geoWorkplace to layerWorkplaceBoundary
-                layerWorkplaceBoundary.addGeoJson(geoWorkplace);
-                // Adding style to layerWorkplaceBoundary
-                layerWorkplaceBoundary.setStyle(function (feature) {
-                    return {
-                        fillOpacity: 0.0,
-                        strokeColor: color.black,
-                        strokeWeight: 1.0,
-                        zIndex: 10,
-                    };
-                });
+                // // Create layer for Workplace Boundary
+                // layerWorkplaceBoundary = new google.maps.Data({ map: map });
+                // // Adding geoJson geoWorkplace to layerWorkplaceBoundary
+                // layerWorkplaceBoundary.addGeoJson(geoWorkplace);
+                // // Adding style to layerWorkplaceBoundary
+                // layerWorkplaceBoundary.setStyle(function (feature) {
+                //     return {
+                //         fillOpacity: 0.0,
+                //         strokeColor: color.black,
+                //         strokeWeight: 1.0,
+                //         zIndex: 10,
+                //     };
+                // });
 
-                // Create layer for Square Boundary
-                layerSquareBoundary = new google.maps.Data({ map: map });
-                // Adding geoJson geoSquare to layerSquareBoundary
-                layerSquareBoundary.addGeoJson(geoSquare);
-                // Adding style to layerSquareBoundary
-                // Styling based on square segmentation (WIN, TACTICAL, SUSTAIN, EXPAND, and NON-INVESTABLE)
-                layerSquareBoundary.setStyle(function (feature) {
-                    var segment = feature.getProperty(siteConfig.squareSegmentProperty);
-                    var color;
-                    var fillOp = 0.6;
-                    switch (segment) {
-                        case siteConfig.segment.win.label:
-                            color = siteConfig.segment.win.color;
-                            break;
-                        case siteConfig.segment.tactical.label:
-                            color = siteConfig.segment.tactical.color;
-                            break;
-                        case siteConfig.segment.sustain.label:
-                            color = siteConfig.segment.sustain.color;
-                            break;
-                        case siteConfig.segment.non_investable.label:
-                            color = siteConfig.segment.non_investable.color;
-                            break;
-                        case siteConfig.segment.expand.label:
-                            color = siteConfig.segment.expand.color;
-                            break;
-                        default:
-                            color = color.gray;
-                            fillOp = 0.2;
-                            break;
-                    }
-                    return {
-                        fillColor: color,
-                        fillOpacity: fillOp,
-                        strokeWeight: 0.1,
-                        zIndex: 20,
-                    };
-                });
+                // // Create layer for Square Boundary
+                // layerSquareBoundary = new google.maps.Data({ map: map });
+                // // Adding geoJson geoSquare to layerSquareBoundary
+                // layerSquareBoundary.addGeoJson(geoSquare);
+                // // Adding style to layerSquareBoundary
+                // // Styling based on square segmentation (WIN, TACTICAL, SUSTAIN, EXPAND, and NON-INVESTABLE)
+                // layerSquareBoundary.setStyle(function (feature) {
+                //     var segment = feature.getProperty(siteConfig.squareSegmentProperty);
+                //     var color;
+                //     var fillOp = 0.6;
+                //     switch (segment) {
+                //         case siteConfig.segment.win.label:
+                //             color = siteConfig.segment.win.color;
+                //             break;
+                //         case siteConfig.segment.tactical.label:
+                //             color = siteConfig.segment.tactical.color;
+                //             break;
+                //         case siteConfig.segment.sustain.label:
+                //             color = siteConfig.segment.sustain.color;
+                //             break;
+                //         case siteConfig.segment.non_investable.label:
+                //             color = siteConfig.segment.non_investable.color;
+                //             break;
+                //         case siteConfig.segment.expand.label:
+                //             color = siteConfig.segment.expand.color;
+                //             break;
+                //         default:
+                //             color = color.gray;
+                //             fillOp = 0.2;
+                //             break;
+                //     }
+                //     return {
+                //         fillColor: color,
+                //         fillOpacity: fillOp,
+                //         strokeWeight: 0.1,
+                //         zIndex: 20,
+                //     };
+                // });
                 // Adding listener click event to layerSquareBoundary, passing layer feature (specific square) as parameter
                 // This listener is trigger onClickFunction to show InfoWindows (pop-up)
-                layerSquareBoundary.addListener('click', (event) => {
-                    onClickFunction(event.feature, 1);
-                });
+                // layerSquareBoundary.addListener('click', (event) => {
+                //     onClickFunction(event.feature, 1);
+                // });
 
-                // Create layer for Indomaret Points (store location)
-                layerIdm = new google.maps.Data({ map: map });
-                // Adding geoJson geoIdm to layerIdm
-                layerIdm.addGeoJson(geoIdm);
-                // Setting style for layerIdm
-                layerIdm.setStyle({
-                    icon: siteConfig.siteResourceFolder.icon +
-                        dataSource._icon.idmIcon,
-                    opacity: 1,
-                    zIndex: 30,
-                    visible: false,
-                });
+                // // Create layer for Indomaret Points (store location)
+                // layerIdm = new google.maps.Data({ map: map });
+                // // Adding geoJson geoIdm to layerIdm
+                // layerIdm.addGeoJson(geoIdm);
+                // // Setting style for layerIdm
+                // layerIdm.setStyle({
+                //     icon: siteConfig.siteResourceFolder.icon +
+                //         dataSource._icon.idmIcon,
+                //     opacity: 1,
+                //     zIndex: 30,
+                //     visible: false,
+                // });
                 // Adding listener click event to layerIdm, passing layer feature (specific point) as parameter
                 // This listener is trigger onClickFunction to show InfoWindows (pop-up)
-                layerIdm.addListener('click', (event) => {
-                    onClickFunction(event.feature, 3);
-                });
+                // layerIdm.addListener('click', (event) => {
+                //     onClickFunction(event.feature, 3);
+                // });
 
-                // Create layer for Point Of Interest Points (POI location)
-                layerPoi = new google.maps.Data({ map: map });
-                // Adding geoJson geoPoi to layerPoi
-                layerPoi.addGeoJson(geoPoi);
-                // Setting style for layerPoi
-                layerPoi.setStyle({
-                    icon: siteConfig.siteResourceFolder.icon +
-                        dataSource._icon.poiIcon,
-                    opacity: 1,
-                    zIndex: 40,
-                    visible: false,
-                });
+                // // Create layer for Point Of Interest Points (POI location)
+                // layerPoi = new google.maps.Data({ map: map });
+                // // Adding geoJson geoPoi to layerPoi
+                // layerPoi.addGeoJson(geoPoi);
+                // // Setting style for layerPoi
+                // layerPoi.setStyle({
+                //     icon: siteConfig.siteResourceFolder.icon +
+                //         dataSource._icon.poiIcon,
+                //     opacity: 1,
+                //     zIndex: 40,
+                //     visible: false,
+                // });
 
-                layerBillboard = new google.maps.Data({ map: map });
-                layerBillboard.addGeoJson(geoBillboard);
-                layerBillboard.setStyle({
-                    icon: siteConfig.siteResourceFolder.icon +
-                        dataSource._icon.billboardIcon,
-                    opacity: 1,
-                    zIndex: 50,
-                    visible: false,
-                });
+                // layerBillboard = new google.maps.Data({ map: map });
+                // layerBillboard.addGeoJson(geoBillboard);
+                // layerBillboard.setStyle({
+                //     icon: siteConfig.siteResourceFolder.icon +
+                //         dataSource._icon.billboardIcon,
+                //     opacity: 1,
+                //     zIndex: 50,
+                //     visible: false,
+                // });
 
-                layerJTI = new google.maps.Data({ map: map });
-                layerJTI.addGeoJson(geoJTI);
-                layerJTI.setStyle(function (feature) {
-                    var channel = feature.getProperty(siteConfig.bosnetCustCategory);
-                    var icn;
-                    switch (channel) {
-                        case siteConfig.channel.wholesale.label:
-                            icn = siteConfig.siteResourceFolder.icon + dataSource._icon.jtiIcon.ws;
-                            break;
-                        case siteConfig.channel.retail.label:
-                            icn = siteConfig.siteResourceFolder.icon + dataSource._icon.jtiIcon.rt;
-                            break;
+                // layerJTI = new google.maps.Data({ map: map });
+                // layerJTI.addGeoJson(geoJTI);
+                // layerJTI.setStyle(function (feature) {
+                //     var channel = feature.getProperty(siteConfig.bosnetCustCategory);
+                //     var icn;
+                //     switch (channel) {
+                //         case siteConfig.channel.wholesale.label:
+                //             icn = siteConfig.siteResourceFolder.icon + dataSource._icon.jtiIcon.ws;
+                //             break;
+                //         case siteConfig.channel.retail.label:
+                //             icn = siteConfig.siteResourceFolder.icon + dataSource._icon.jtiIcon.rt;
+                //             break;
 
-                        default:
-                            break;
-                    }
-                    return {
-                        icon: icn,
-                        opacity: 1,
-                        zIndex: 60,
-                        visible: false,
-                    }
+                //         default:
+                //             break;
+                //     }
+                //     return {
+                //         icon: icn,
+                //         opacity: 1,
+                //         zIndex: 60,
+                //         visible: false,
+                //     }
 
-                });
-                layerJTI.addListener('click', (event) => {
-                    onClickFunction(event.feature, 2);
-                });
+                // });
+                // layerJTI.addListener('click', (event) => {
+                //     onClickFunction(event.feature, 2);
+                // });
 
                 callback();
-            } catch (err) {
+            }
+            catch (err) {
                 console.error('Map visual failed to load: ' + err.message);
             }
         }
 
-        function initFilter() {
-            elmCategoryFilter.innerHTML = '';
-            jtiProduct.forEach(data => {
-                var temp = data['Segment'];
-                if (categoryFilter.length != 0 && categoryFilter.includes(temp)) {
-                    return;
-                } else {
-                    categoryFilter.push(temp);
-                }
-            });
-            var elmListCategoryNode;
-            categoryFilter.forEach(item => {
-                elmListCategoryNode = document.createElement('li');
-                var elmLinkNode = document.createElement('a');
+        /** !!!!! UNUSED !!!!!
+         *  **/
+        function ainitFilter() {
+            try {
+                // elmCategoryFilter.innerHTML = '';
 
-                var elmText;
-                elmLinkNode.setAttribute('class', 'dropdown-item');
-                elmLinkNode.setAttribute('href', '#');
-                elmLinkNode.setAttribute('id', item);
-                elmText = document.createTextNode(item);
-                elmLinkNode.addEventListener("click", (event) => {
-                    filterCategory(event.target.id);
-                });
-                elmLinkNode.appendChild(elmText);
-                elmListCategoryNode.appendChild(elmLinkNode);
-                elmCategoryFilter.appendChild(elmListCategoryNode);
-            });
+                // jtiProduct.forEach(data => {
+                //     var temp = data['Segment'];
+                //     if (categoryFilter.length != 0 && categoryFilter.includes(temp)) {
+                //         return;
+                //     } else {
+                //         categoryFilter.push(temp);
+                //     }
+                // });
+                // var elmListCategoryNode;
 
-            // Square segment filter
-            // Get array of segmentation from layerSquareBoundary
-            elmSquareSegmentFilter.innerHTML = ''; // clear out html element
-            layerSquareBoundary.forEach(feature => {
-                var temp = feature.getProperty(siteConfig.squareSegmentProperty);
-                if (squareSegmentationFilter.length != 0 && squareSegmentationFilter.includes(temp)) {
-                    return;
-                } else {
-                    squareSegmentationFilter.push(temp);
-                }
-            });
-            // sort squareSegmentationFilter in alphabetical order
-            squareSegmentationFilter.sort();
-            // create elements for each item in array
-            var elmListSqSegNode;
-            squareSegmentationFilter.forEach(item => {
-                elmListSqSegNode = document.createElement('li');
-                var elmLinkNode = document.createElement('a');
+                // categoryFilter.forEach(item => {
+                //     elmListCategoryNode = document.createElement('li');
+                //     var elmLinkNode = document.createElement('a');
 
-                var elmText;
-                elmLinkNode.setAttribute('class', 'dropdown-item'); // set attribute for a
-                elmLinkNode.setAttribute('href', '#'); // set attribute for a
-                elmLinkNode.setAttribute('id', item);
-                elmText = document.createTextNode(item);
-                elmLinkNode.addEventListener("click", (event) => {
-                    layerSquareBoundary.revertStyle();
-                    overrideSegmentStyle(event.target.id, 0);
-                });
-                elmLinkNode.appendChild(elmText);
-                elmListSqSegNode.appendChild(elmLinkNode);
-                elmSquareSegmentFilter.appendChild(elmListSqSegNode);
-            });
-            // empty the element and add prepared node
+                //     var elmText;
+                //     elmLinkNode.setAttribute('class', 'dropdown-item');
+                //     elmLinkNode.setAttribute('href', '#');
+                //     elmLinkNode.setAttribute('id', item);
+                //     elmText = document.createTextNode(item);
+                //     elmLinkNode.addEventListener("click", (event) => {
+                //         filterCategory(event.target.id);
+                //     });
+                //     elmLinkNode.appendChild(elmText);
+                //     elmListCategoryNode.appendChild(elmLinkNode);
+                //     elmCategoryFilter.appendChild(elmListCategoryNode);
+                // });
 
-            // Square ID filter
-            elmSquareIdFilter.innerHTML = '';
-            elmSquareIdFilter.setAttribute('style', 'max-height: 400px; overflow-y: auto;')
-            layerSquareBoundary.forEach(feature => {
-                var temp = feature.getProperty(siteConfig.squareIdProperty);
-                if (squareIdFilter.length != 0 && squareIdFilter.includes(temp)) {
-                    return;
-                } else {
-                    squareIdFilter.push(temp);
-                }
-            });
-            squareIdFilter.sort();
+                // Square segment filter
+                // Get array of segmentation from layerSquareBoundary
+                // elmSquareSegmentFilter.innerHTML = ''; // clear out html element
+                // layerSquareBoundary.forEach(feature => {
+                //     var temp = feature.getProperty(siteConfig.squareSegmentProperty);
+                //     if (squareSegmentationFilter.length != 0 && squareSegmentationFilter.includes(temp)) {
+                //         return;
+                //     } else {
+                //         squareSegmentationFilter.push(temp);
+                //     }
+                // });
+                // // sort squareSegmentationFilter in alphabetical order
+                // squareSegmentationFilter.sort();
+                // // create elements for each item in array
+                // var elmListSqSegNode;
+                // squareSegmentationFilter.forEach(item => {
+                //     elmListSqSegNode = document.createElement('li');
+                //     var elmLinkNode = document.createElement('a');
 
-            var elmListSqIdNode;
-            squareIdFilter.forEach(item => {
-                elmListSqIdNode = document.createElement('li');
-                var elmLinkNode = document.createElement('a');
-                var elmText;
-                elmLinkNode.setAttribute('class', 'dropdown-item'); // set attribute for a
-                elmLinkNode.setAttribute('href', '#'); // set attribute for a
-                elmLinkNode.setAttribute('id', item);
-                elmText = document.createTextNode(item);
-                elmLinkNode.appendChild(elmText);
-                elmListSqIdNode.appendChild(elmLinkNode);
-                elmSquareIdFilter.appendChild(elmListSqIdNode);
-                elmLinkNode.addEventListener("click", (event) => {
-                    layerSquareBoundary.revertStyle();
-                    overrideSegmentStyle(event.target.id, 1);
-                });
-            });
+                //     var elmText;
+                //     elmLinkNode.setAttribute('class', 'dropdown-item'); // set attribute for a
+                //     elmLinkNode.setAttribute('href', '#'); // set attribute for a
+                //     elmLinkNode.setAttribute('id', item);
+                //     elmText = document.createTextNode(item);
+                //     elmLinkNode.addEventListener("click", (event) => {
+                //         layerSquareBoundary.revertStyle();
+                //         overrideSegmentStyle(event.target.id, 0);
+                //     });
+                //     elmLinkNode.appendChild(elmText);
+                //     elmListSqSegNode.appendChild(elmLinkNode);
+                //     elmSquareSegmentFilter.appendChild(elmListSqSegNode);
+                // });
+                // empty the element and add prepared node
+
+                // Square ID filter
+                // elmSquareIdFilter.innerHTML = '';
+                // elmSquareIdFilter.setAttribute('style', 'max-height: 400px; overflow-y: auto;')
+                // layerSquareBoundary.forEach(feature => {
+                //     var temp = feature.getProperty(siteConfig.squareIdProperty);
+                //     if (squareIdFilter.length != 0 && squareIdFilter.includes(temp)) {
+                //         return;
+                //     } else {
+                //         squareIdFilter.push(temp);
+                //     }
+                // });
+                // squareIdFilter.sort();
+
+                // var elmListSqIdNode;
+                // squareIdFilter.forEach(item => {
+                //     elmListSqIdNode = document.createElement('li');
+                //     var elmLinkNode = document.createElement('a');
+                //     var elmText;
+                //     elmLinkNode.setAttribute('class', 'dropdown-item'); // set attribute for a
+                //     elmLinkNode.setAttribute('href', '#'); // set attribute for a
+                //     elmLinkNode.setAttribute('id', item);
+                //     elmText = document.createTextNode(item);
+                //     elmLinkNode.appendChild(elmText);
+                //     elmListSqIdNode.appendChild(elmLinkNode);
+                //     elmSquareIdFilter.appendChild(elmListSqIdNode);
+                //     elmLinkNode.addEventListener("click", (event) => {
+                //         layerSquareBoundary.revertStyle();
+                //         overrideSegmentStyle(event.target.id, 1);
+                //     });
+                // });
 
 
-            elmSquareCategoryFilter.innerHTML = ''; // clear out html element
-            layerSquareBoundary.forEach(feature => {
-                var temp = feature.getProperty(siteConfig.squareCategoryProperty);
-                if (squareCategoryFilter.length != 0 && squareCategoryFilter.includes(temp)) {
-                    return;
-                } else {
-                    squareCategoryFilter.push(temp);
-                }
-            });
-            // sort squareSegmentationFilter in alphabetical order
-            squareCategoryFilter.sort();
-            // create elements for each item in array
-            var elmListSqCatNode;
-            squareCategoryFilter.forEach(item => {
-                elmListSqCatNode = document.createElement('li');
-                var elmLinkNode = document.createElement('a');
+                // elmSquareCategoryFilter.innerHTML = ''; // clear out html element
+                // layerSquareBoundary.forEach(feature => {
+                //     var temp = feature.getProperty(siteConfig.squareCategoryProperty);
+                //     if (squareCategoryFilter.length != 0 && squareCategoryFilter.includes(temp)) {
+                //         return;
+                //     } else {
+                //         squareCategoryFilter.push(temp);
+                //     }
+                // });
+                // // sort squareSegmentationFilter in alphabetical order
+                // squareCategoryFilter.sort();
+                // // create elements for each item in array
+                // var elmListSqCatNode;
+                // squareCategoryFilter.forEach(item => {
+                //     elmListSqCatNode = document.createElement('li');
+                //     var elmLinkNode = document.createElement('a');
 
-                var elmText;
-                elmLinkNode.setAttribute('class', 'dropdown-item'); // set attribute for a
-                elmLinkNode.setAttribute('href', '#'); // set attribute for a
-                elmLinkNode.setAttribute('id', item);
-                elmText = document.createTextNode(item);
-                elmLinkNode.addEventListener("click", (event) => {
-                    layerSquareBoundary.revertStyle();
-                    overrideSegmentStyle(event.target.id, 2);
-                });
-                elmLinkNode.appendChild(elmText);
-                elmListSqCatNode.appendChild(elmLinkNode);
-                elmSquareCategoryFilter.appendChild(elmListSqCatNode);
-            });
+                //     var elmText;
+                //     elmLinkNode.setAttribute('class', 'dropdown-item'); // set attribute for a
+                //     elmLinkNode.setAttribute('href', '#'); // set attribute for a
+                //     elmLinkNode.setAttribute('id', item);
+                //     elmText = document.createTextNode(item);
+                //     elmLinkNode.addEventListener("click", (event) => {
+                //         layerSquareBoundary.revertStyle();
+                //         overrideSegmentStyle(event.target.id, 2);
+                //     });
+                //     elmLinkNode.appendChild(elmText);
+                //     elmListSqCatNode.appendChild(elmLinkNode);
+                //     elmSquareCategoryFilter.appendChild(elmListSqCatNode);
+                // });
+            }
+            catch (err) {
+                console.error('Initialize Filter Failed. ' + err.message);
+            }
+
 
         }
 
@@ -1087,6 +1336,7 @@
                 var idmStore = calculateIDMStore(bound);
                 var cakrawalaData = calculateCakData(bound);
 
+                tableHead.setAttribute('colspan','2');
                 tableHead.innerText = "Square ID : " + feature.getProperty(siteConfig.squareIdProperty);
                 tableRow.appendChild(tableHead);
                 header.appendChild(tableRow);
@@ -1147,6 +1397,15 @@
                     body.appendChild(tableRowSquare);
                 }
 
+                // Add table separator for Cakrawala Data
+                var trSeparatorCakrawala = document.createElement('tr');
+                trSeparatorCakrawala.setAttribute('style', 'border-color: black');
+                var tdSeparatorCakrawala = document.createElement('th');
+                tdSeparatorCakrawala.setAttribute('colspan','2');
+                tdSeparatorCakrawala.innerHTML = 'Cakrawala Survey';
+                trSeparatorCakrawala.appendChild(tdSeparatorCakrawala);
+                body.appendChild(trSeparatorCakrawala);
+
                 sobProductCakrawala.forEach(product => {
                     let tableRowProduct = document.createElement('tr');
                     tableRowProduct.setAttribute('data-category', product['Segment']);
@@ -1154,7 +1413,7 @@
                     var filteredSelection = cakrawalaData.filter((dt) => dt['product'] == label);
 
                     var elmLabel = document.createElement('td');
-                    elmLabel.innerHTML = 'Cakrawala ' + label;
+                    elmLabel.innerHTML = label;
                     tableRowProduct.appendChild(elmLabel);
                     var elmValue = document.createElement('td');
                     var value = filteredSelection[0]['total'] ? (filteredSelection[0]['total']).toLocaleString(numberFormat.region,
@@ -1167,6 +1426,15 @@
                     body.appendChild(tableRowProduct);
                 });
 
+                // Add table separator for IDM Performance Data
+                var trSeparatorIDMPerf = document.createElement('tr');
+                trSeparatorIDMPerf.setAttribute('style', 'border-color: black');
+                var tdSeparatorIdmPerf = document.createElement('th');
+                tdSeparatorIdmPerf.setAttribute('colspan','2');
+                tdSeparatorIdmPerf.innerHTML = 'IDM Performance';
+                trSeparatorIDMPerf.appendChild(tdSeparatorIdmPerf);
+                body.appendChild(trSeparatorIDMPerf);
+
                 table.appendChild(header);
                 table.appendChild(body);
 
@@ -1177,6 +1445,7 @@
             else if (type == 2 && feature.getGeometry().getType() == 'Point') {
 
                 tableHead.innerText = "Store Category : " + feature.getProperty(siteConfig.bosnetCustCategory);
+                tableHead.setAttribute('colspan','2');
                 tableRow.appendChild(tableHead);
                 header.appendChild(tableRow);
 
@@ -1223,13 +1492,21 @@
 
                 });
 
+                var trSeparatorCakrawala = document.createElement('tr');
+                trSeparatorCakrawala.setAttribute('style', 'border-color: black');
+                var tdSeparatorCakrawala = document.createElement('th');
+                tdSeparatorCakrawala.setAttribute('colspan','2');
+                tdSeparatorCakrawala.innerHTML = 'Cakrawala Survey';
+                trSeparatorCakrawala.appendChild(tdSeparatorCakrawala);
+                body.appendChild(trSeparatorCakrawala);
+
                 sobProductCakrawala.forEach(product => {
                     let tableRowProduct = document.createElement('tr');
                     tableRowProduct.setAttribute('data-category', product['Segment']);
                     var label = product['SOB - Variant Level'];
                     var filteredSelection = transactionCakrawalaFiltered.filter((dt) => dt['Id Pelanggan'] == custId);
                     var elmLabel = document.createElement('td');
-                    elmLabel.innerHTML = 'Cakrawala ' + label;
+                    elmLabel.innerHTML = label;
                     tableRowProduct.appendChild(elmLabel);
                     var elmValue = document.createElement('td');
                     var value = filteredSelection[0][label] ? (filteredSelection[0][label]).toLocaleString(numberFormat.region,
@@ -1552,6 +1829,60 @@
             ecPage.classList.add('d-none');
         }
 
+        function initializeEventListener() {
+            volumeLink.addEventListener('click', (e) => {
+                resetPages();
+                volumePage.classList.remove('d-none');
+                volumeLink.parentElement.classList.add('active');
+            });
+
+            dropsizeLink.addEventListener('click', (e) => {
+                resetPages();
+                dropsizePage.classList.remove('d-none');
+                dropsizeLink.parentElement.classList.add('active');
+            });
+
+            ecLink.addEventListener('click', (e) => {
+                resetPages();
+                ecPage.classList.remove('d-none');
+                ecLink.parentElement.classList.add('active');
+            });
+            // Google Map Zoom Changes Listener
+            map.addListener('zoom_changed', (e) => {
+                if (map.getZoom() >= 16) {
+                    elmAJTIStore.classList.remove("disabled");
+                    elmAIDMStore.classList.remove("disabled");
+                    elmAPoi.classList.remove("disabled");
+                    elmABill.classList.remove("disabled");
+                    if (!layerJTIStatus) {
+                        elmAJTIStore.click();
+                    }
+                    if (!layerIdmStatus) {
+                        elmAIDMStore.click();
+                    }
+                } else {
+                    elmAJTIStore.classList.add("disabled");
+                    elmAIDMStore.classList.add("disabled");
+                    elmAPoi.classList.add("disabled");
+                    elmABill.classList.add("disabled");
+                    if (layerJTIStatus) {
+                        elmAJTIStore.click();
+                    }
+                    if (layerIdmStatus) {
+                        elmAIDMStore.click();
+                    }
+                    if (layerBillboardStatus) {
+                        elmABill.click();
+                    }
+                    if (layerPoiStatus) {
+                        elmAPoi.click();
+                    }
+                    if (infowindow.isOpen) {
+                        infowindow.close();
+                    }
+                }
+            });
+        }
 
     </script>
 
@@ -1788,12 +2119,12 @@
         loadScript(siteConfig.siteResourceFolder.javascript + '/papaparse.min.js', 1);
         loadScript(siteConfig.siteResourceFolder.javascript + '/xlsx.full.min.js', 1);
 
-        // Init variables
+        // Initialize variables
         let map;
-        let geoWorkplace;
+        // let geoWorkplace;
         let layerWorkplaceBoundary;
         let layerWorkplaceBoundaryStatus = true;
-        let geoSquare;
+        // let geoSquare;
         let layerSquareBoundary;
         let layerSquareBoundaryStatus = true;
         let geoPoi;
@@ -1815,7 +2146,6 @@
         let transactionCakrawala;
         let transactionCakrawalaFiltered;
         let transactionIdm;
-
         let jtiProduct;
         let sobProduct;
         let sobProductIdm;
@@ -1854,12 +2184,13 @@
         // Variable for Charts
         var volumeChart = new Chart(volumePage);
         var dropSizeChart = new Chart(dropsizePage);
+        var effectiveCallChart = new Chart(ecPage);
 
         // Variable for info window (pop-up).
         let infowindow;
 
         // Web Worker
-        let loadPointsWorker;
+        let loadWorker;
         let chartCalculationWorker;
 
         // Functions call 
@@ -1867,69 +2198,14 @@
             const customControl = initCustomControl();
             map.controls[google.maps.ControlPosition.RIGHT_TOP].push(customControl);
 
+            infowindow = new google.maps.InfoWindow({ headerDisabled: true, maxWidth: 500, });
+
             loadDataWorker();
-
-
             loadData(function () {
-                initMapVisual(function () {
-                    infowindow = new google.maps.InfoWindow({ headerDisabled: true, maxWidth: 500, });
-                    initFilter();
-
-                    volumeLink.addEventListener('click', (e) => {
-                        resetPages();
-                        volumePage.classList.remove('d-none');
-                        volumeLink.parentElement.classList.add('active');
-                    });
-
-                    dropsizeLink.addEventListener('click', (e) => {
-                        resetPages();
-                        dropsizePage.classList.remove('d-none');
-                        dropsizeLink.parentElement.classList.add('active');
-                    });
-
-                    ecLink.addEventListener('click', (e) => {
-                        resetPages();
-                        ecPage.classList.remove('d-none');
-                        ecLink.parentElement.classList.add('active');
-                    });
-
-                    map.addListener('zoom_changed', (e) => {
-                        if (map.getZoom() >= 16) {
-                            elmAJTIStore.classList.remove("disabled");
-                            elmAIDMStore.classList.remove("disabled");
-                            elmAPoi.classList.remove("disabled");
-                            elmABill.classList.remove("disabled");
-                            if (!layerJTIStatus) {
-                                elmAJTIStore.click();
-                            }
-                            if (!layerIdmStatus) {
-                                elmAIDMStore.click();
-                            }
-                        } else {
-                            elmAJTIStore.classList.add("disabled");
-                            elmAIDMStore.classList.add("disabled");
-                            elmAPoi.classList.add("disabled");
-                            elmABill.classList.add("disabled");
-                            if (layerJTIStatus) {
-                                elmAJTIStore.click();
-                            }
-                            if (layerIdmStatus) {
-                                elmAIDMStore.click();
-                            }
-                            if (layerBillboardStatus) {
-                                elmABill.click();
-                            }
-                            if (layerPoiStatus) {
-                                elmAPoi.click();
-                            }
-                            if (infowindow.isOpen) {
-                                infowindow.close();
-                            }
-                        }
-                    });
-                });
-
+                infowindow = new google.maps.InfoWindow({ headerDisabled: true, maxWidth: 500, });
+                initializeEventListener();
             });
+
         });
 
 
