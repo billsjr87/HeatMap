@@ -166,7 +166,7 @@
 
                         </canvas>
                         <canvas class="d-none text-reset" id="dropsize_page">
-                            
+
                         </canvas>
                         <canvas class="d-none text-reset" id="ec_page">
                             Content: Effective Call (%)
@@ -229,10 +229,107 @@
             }
         }
 
+        function calculateData() {
+            try {
+                if (window.Worker) {
+
+                    var filteredSelection = new Array();
+
+                    calcWorker = new Worker(siteConfig.siteResourceFolder.javascript + '/calculation.js');
+
+                    filteredSquareFeatures.forEach(feature => {
+                        var sw = feature.getGeometry().getAt(0).getAt(0);
+                        var ne = feature.getGeometry().getAt(0).getAt(2);
+                        var bound = new google.maps.LatLngBounds(sw, ne);
+                        var squareSegment = feature.getProperty(siteConfig.squareSegmentProperty);
+
+                        layerJTI.forEach(jtiPoint => {
+                            if (bound.contains(jtiPoint.getGeometry().get())) {
+                                var temp = transaction5Week.filter(data => data['CustomerId'] == jtiPoint.getProperty('szCustId'));
+                                if (temp.length > 0) {
+                                    temp.forEach(dt => {
+                                        dt['SquareSegment'] = squareSegment;
+                                        filteredSelection.push(dt);
+                                    });
+                                }
+                            }
+                        });
+                    });
+
+                    calcWorker.postMessage([
+                        filteredSelection,
+                        jtiProduct,
+                        squareSegmentationFilter,
+                        categoryFilter
+                    ]);
+                    // console.log("MESSAGE POST: calcWorker");
+                    
+
+                    calcWorker.onmessage = (result) => {
+                        // console.log("MESSAGE RECEIVED: calcWorker");
+                        updateChart(result.data);
+                        // console.log();
+                    }
+
+
+                    // filteredSquareFeatures.forEach(feature => {
+                    //     var idSquare = feature.getProperty(siteConfig.squareIdProperty);
+
+                    // });
+                    // var obj = JSON.parse(JSON.stringify(filteredSquareFeatures));
+                    // console.log(filteredSquareFeatures);
+                    // console.log(transaction5Week);
+
+
+                    // calcWorker.postMessage([
+                    //     JSONfn.stringify(filteredSquareFeatures),
+                    //     transaction5Week,
+                    // ]);
+                    // calcWorker.postMessage([
+                    //     'IDM POINT',
+                    //     siteConfig.siteAddress +
+                    //     siteConfig.siteDataFolder +
+                    //     dataSource._point.idmPointjson,
+                    //     'json',
+                    //     true
+                    // ]);
+
+                    // calcWorker.onmessage = (result) => {
+                    //     console.log(result.data);
+
+                    // }
+                }
+            } catch (err) {
+                console.error('Unable to perform calculation. ' + err.message);
+
+            }
+        }
+
+        /**
+         * loadDataWorker is function to load data utilizing Web Worker
+         * Notes    : Data fetch within this function may have result in later stages
+         **/
         function loadDataWorker() {
             try {
                 if (window.Worker) {
                     loadWorker = new Worker(siteConfig.siteResourceFolder.javascript + '/loadPoint.js');
+
+                    // Calling Web Worker to load Workplace SHP
+                    loadWorker.postMessage([
+                        'SHP WP',
+                        siteConfig.siteAddress +
+                        siteConfig.siteDataFolder +
+                        dataSource._shp.wpBoundary
+                    ]);
+
+                    // Calling Web Worker to load Square SHP
+                    loadWorker.postMessage([
+                        'SHP SQ',
+                        siteConfig.siteAddress +
+                        siteConfig.siteDataFolder +
+                        dataSource._shp.sqBoundary +
+                        dataSource._shp.sqBoundaries.javanusa
+                    ]);
 
                     // Calling Web Worker to load IDM POINT
                     loadWorker.postMessage([
@@ -330,7 +427,98 @@
 
                     // Web Worker Result listener
                     loadWorker.onmessage = (result) => {
-                        if (result.data.source == 'IDM POINT') {
+                        if (result.data.source == 'SHP WP') {
+                            var rest = result.data.result;
+                            // Initiate visual for loaded workplace boundary shp file
+                            layerWorkplaceBoundary = initVisual(layerWorkplaceBoundary, rest, {
+                                fillOpacity: 0.0,
+                                strokeColor: color.black,
+                                strokeWeight: 1.0,
+                                zIndex: 10,
+                            });
+                            dataAvailibility[0] = 1;
+                        }
+                        else if (result.data.source == 'SHP SQ') {
+                            var rest = result.data.result;
+                            // Initiate visual for loaded square boundary shp file
+                            var fillOp = 0.6;
+                            layerSquareBoundary = initVisual(layerSquareBoundary, rest);
+                            layerSquareBoundary.setStyle((feature) => {
+                                var segment = feature.getProperty(siteConfig.squareSegmentProperty);
+                                var color;
+                                switch (segment) {
+                                    case siteConfig.segment.win.label:
+                                        color = siteConfig.segment.win.color;
+                                        break;
+                                    case siteConfig.segment.tactical.label:
+                                        color = siteConfig.segment.tactical.color;
+                                        break;
+                                    case siteConfig.segment.sustain.label:
+                                        color = siteConfig.segment.sustain.color;
+                                        break;
+                                    case siteConfig.segment.non_investable.label:
+                                        color = siteConfig.segment.non_investable.color;
+                                        break;
+                                    case siteConfig.segment.expand.label:
+                                        color = siteConfig.segment.expand.color;
+                                        break;
+                                    default:
+                                        color = color.gray;
+                                        fillOp = 0.2;
+                                        break;
+                                }
+                                return {
+                                    fillColor: color,
+                                    fillOpacity: fillOp,
+                                    strokeWeight: 0.1,
+                                    zIndex: 20,
+                                };
+                            });
+                            layerSquareBoundary.addListener('click', (event) => {
+                                onClickFunction(event.feature, 1);
+                            });
+                            // Get unique values of Square Segment and stored in squareSegmentationFilter
+                            layerSquareBoundary.forEach(feature => {
+                                var temp = feature.getProperty(siteConfig.squareSegmentProperty);
+                                if (squareSegmentationFilter.length != 0 && squareSegmentationFilter.includes(temp)) {
+                                    return;
+                                } else {
+                                    squareSegmentationFilter.push(temp);
+                                }
+                            });
+                            // Get unique values of Square Id and stored in squareIdFilter
+                            layerSquareBoundary.forEach(feature => {
+                                var temp = feature.getProperty(siteConfig.squareIdProperty);
+                                if (squareIdFilter.length != 0 && squareIdFilter.includes(temp)) {
+                                    return;
+                                } else {
+                                    squareIdFilter.push(temp);
+                                }
+                            });
+                            // Get unique values of Square Category and stored in squareCategoryFilter
+                            layerSquareBoundary.forEach(feature => {
+                                var temp = feature.getProperty(siteConfig.squareCategoryProperty);
+                                if (squareCategoryFilter.length != 0 && squareCategoryFilter.includes(temp)) {
+                                    return;
+                                } else {
+                                    squareCategoryFilter.push(temp);
+                                }
+                            });
+                            // Call initFilter to populate dropdown filter on top page
+                            initFilter(elmSquareCategoryFilter, squareCategoryFilter);
+                            initFilter(elmSquareSegmentFilter, squareSegmentationFilter);
+                            initFilter(elmSquareIdFilter, squareIdFilter);
+
+                            // Filter Layer Square to match Workplace
+                            layerSquareBoundary.forEach(feature => {
+                                if (feature.getProperty('Id_Workpla') == wpCode) {
+                                    filteredSquareFeatures.push(feature);
+                                }
+                            });
+
+                            dataAvailibility[1] = 1;
+                        }
+                        else if (result.data.source == 'IDM POINT') {
                             geoIdm = result.data.result;
                             layerIdm = initVisual(layerIdm, geoIdm, {
                                 icon: siteConfig.siteResourceFolder.icon +
@@ -342,9 +530,11 @@
                             layerIdm.addListener('click', (event) => {
                                 onClickFunction(event.feature, 3);
                             });
+                            dataAvailibility[2] = 1;
                         }
                         else if (result.data.source == 'IDM TRX') {
                             transactionIdm = result.data.result;
+                            dataAvailibility[3] = 1;
                         }
                         else if (result.data.source == 'JTI POINT') {
                             geoJTI = result.data.result;
@@ -374,12 +564,25 @@
                             layerJTI.addListener('click', (event) => {
                                 onClickFunction(event.feature, 2);
                             });
+                            dataAvailibility[4] = 1;
                         }
                         else if (result.data.source == 'JTI TRX') {
                             transactionBosnet = result.data.result;
+                            if (typeof transaction5Week == 'undefined') {
+                                if (typeof transactionL4w != 'undefined') {
+                                    transaction5Week = transactionL4w.concat(transactionBosnet);
+                                }
+                            }
+                            dataAvailibility[5] = 1;
                         }
                         else if (result.data.source == 'JTI TRX L4W') {
                             transactionL4w = result.data.result;
+                            if (typeof transaction5Week == 'undefined') {
+                                if (typeof transactionBosnet != 'undefined') {
+                                    transaction5Week = transactionL4w.concat(transactionBosnet);
+                                }
+                            }
+                            dataAvailibility[6] = 1;
                         }
                         else if (result.data.source == 'POI POINT') {
                             geoPoi = result.data.result;
@@ -390,6 +593,7 @@
                                 zIndex: 40,
                                 visible: false,
                             });
+                            dataAvailibility[7] = 1;
                         }
                         else if (result.data.source == 'BILL POINT') {
                             geoBillboard = result.data.result;
@@ -400,10 +604,12 @@
                                 zIndex: 50,
                                 visible: false,
                             });
+                            dataAvailibility[8] = 1;
                         }
                         else if (result.data.source == 'CAK TRX') {
                             transactionCakrawala = result.data.result;
                             transactionCakrawalaFiltered = transactionCakrawala.filter((data) => data['Work Place'].slice(0, data['Work Place'].indexOf(' ')) == wpCode);
+                            dataAvailibility[9] = 1;
                         }
                         // JTI PRODUCT result and initiate Category Filter
                         else if (result.data.source == 'JTI PRODUCT') {
@@ -417,15 +623,15 @@
                                 }
                             });
                             initFilter(elmCategoryFilter, categoryFilter);
+                            dataAvailibility[10] = 1;
                         }
                         else if (result.data.source == 'SOB PRODUCT') {
                             sobProduct = result.data.result;
                             sobProductIdm = sobProduct.filter((product) => product['Source Data'] == 'IDM');
                             sobProductCakrawala = sobProduct.filter((product) => product['Source Data'] == 'Cakrawala');
+                            dataAvailibility[11] = 1;
                         }
                     };
-
-                    // TODO : Find a way to identify both JTI TRX and JTI TRX L4W initiated, then combine the result to transactionAll
                 }
             } catch (err) {
                 console.error('Unsupported browser for background threading. ' + err.message);
@@ -483,7 +689,7 @@
             console.log(parentId);
         }
 
-        /**
+        /** !!!!! UNUSED !!!!!
          * loadData is function to load data from URL and transform it into geoJson data type
          * @param callback      : callback function
          * Accepted file type   : zip (shp), json, csv, xlsx (inc. xlsb)
@@ -493,101 +699,108 @@
         async function loadData(callback) {
             try {
                 // Load workplace boundary shp file
-                layerWorkplaceBoundary = await shp(
-                    siteConfig.siteAddress +
-                    siteConfig.siteDataFolder +
-                    dataSource._shp.wpBoundary
-                    , 'shp', true)
-                    // Initiate visual for loaded workplace boundary shp file 
-                    .then(result => {
-                        return initVisual(layerWorkplaceBoundary, result, {
-                            fillOpacity: 0.0,
-                            strokeColor: color.black,
-                            strokeWeight: 1.0,
-                            zIndex: 10,
-                        });
-                    })
-                    .catch(error => console.error(error));
+                // layerWorkplaceBoundary = await shp(
+                //     siteConfig.siteAddress +
+                //     siteConfig.siteDataFolder +
+                //     dataSource._shp.wpBoundary
+                //     , 'shp', true)
+                //     // Initiate visual for loaded workplace boundary shp file 
+                //     .then(result => {
+                //         return initVisual(layerWorkplaceBoundary, result, {
+                //             fillOpacity: 0.0,
+                //             strokeColor: color.black,
+                //             strokeWeight: 1.0,
+                //             zIndex: 10,
+                //         });
+                //     })
+                //     .catch(error => console.error(error));
                 // Load square boundary shp file then initiate visual and add listener
-                layerSquareBoundary = await shp(
-                    siteConfig.siteAddress +
-                    siteConfig.siteDataFolder +
-                    dataSource._shp.sqBoundary +
-                    dataSource._shp.sqBoundaries.javanusa
-                    , 'shp', true)
-                    // Initiate visual for loaded square boundary shp file
-                    .then(result => {
-                        var fillOp = 0.6;
-                        layerSquareBoundary = initVisual(layerSquareBoundary, result);
-                        layerSquareBoundary.setStyle((feature) => {
-                            var segment = feature.getProperty(siteConfig.squareSegmentProperty);
-                            var color;
-                            switch (segment) {
-                                case siteConfig.segment.win.label:
-                                    color = siteConfig.segment.win.color;
-                                    break;
-                                case siteConfig.segment.tactical.label:
-                                    color = siteConfig.segment.tactical.color;
-                                    break;
-                                case siteConfig.segment.sustain.label:
-                                    color = siteConfig.segment.sustain.color;
-                                    break;
-                                case siteConfig.segment.non_investable.label:
-                                    color = siteConfig.segment.non_investable.color;
-                                    break;
-                                case siteConfig.segment.expand.label:
-                                    color = siteConfig.segment.expand.color;
-                                    break;
-                                default:
-                                    color = color.gray;
-                                    fillOp = 0.2;
-                                    break;
-                            }
-                            return {
-                                fillColor: color,
-                                fillOpacity: fillOp,
-                                strokeWeight: 0.1,
-                                zIndex: 20,
-                            };
-                        });
-                        layerSquareBoundary.addListener('click', (event) => {
-                            onClickFunction(event.feature, 1);
-                        });
-                        // Get unique values of Square Segment and stored in squareSegmentationFilter
-                        layerSquareBoundary.forEach(feature => {
-                            var temp = feature.getProperty(siteConfig.squareSegmentProperty);
-                            if (squareSegmentationFilter.length != 0 && squareSegmentationFilter.includes(temp)) {
-                                return;
-                            } else {
-                                squareSegmentationFilter.push(temp);
-                            }
-                        });
-                        // Get unique values of Square Id and stored in squareIdFilter
-                        layerSquareBoundary.forEach(feature => {
-                            var temp = feature.getProperty(siteConfig.squareIdProperty);
-                            if (squareIdFilter.length != 0 && squareIdFilter.includes(temp)) {
-                                return;
-                            } else {
-                                squareIdFilter.push(temp);
-                            }
-                        });
-                        // Get unique values of Square Category and stored in squareCategoryFilter
-                        layerSquareBoundary.forEach(feature => {
-                            var temp = feature.getProperty(siteConfig.squareCategoryProperty);
-                            if (squareCategoryFilter.length != 0 && squareCategoryFilter.includes(temp)) {
-                                return;
-                            } else {
-                                squareCategoryFilter.push(temp);
-                            }
-                        });
-                        // Call initFilter to populate dropdown filter on top page
-                        initFilter(elmSquareCategoryFilter, squareCategoryFilter);
-                        initFilter(elmSquareSegmentFilter, squareSegmentationFilter);
-                        initFilter(elmSquareIdFilter, squareIdFilter);
+                // layerSquareBoundary = await shp(
+                //     siteConfig.siteAddress +
+                //     siteConfig.siteDataFolder +
+                //     dataSource._shp.sqBoundary +
+                //     dataSource._shp.sqBoundaries.javanusa
+                //     , 'shp', true)
+                //     // Initiate visual for loaded square boundary shp file
+                //     .then(result => {
+                //         var fillOp = 0.6;
+                //         layerSquareBoundary = initVisual(layerSquareBoundary, result);
+                //         layerSquareBoundary.setStyle((feature) => {
+                //             var segment = feature.getProperty(siteConfig.squareSegmentProperty);
+                //             var color;
+                //             switch (segment) {
+                //                 case siteConfig.segment.win.label:
+                //                     color = siteConfig.segment.win.color;
+                //                     break;
+                //                 case siteConfig.segment.tactical.label:
+                //                     color = siteConfig.segment.tactical.color;
+                //                     break;
+                //                 case siteConfig.segment.sustain.label:
+                //                     color = siteConfig.segment.sustain.color;
+                //                     break;
+                //                 case siteConfig.segment.non_investable.label:
+                //                     color = siteConfig.segment.non_investable.color;
+                //                     break;
+                //                 case siteConfig.segment.expand.label:
+                //                     color = siteConfig.segment.expand.color;
+                //                     break;
+                //                 default:
+                //                     color = color.gray;
+                //                     fillOp = 0.2;
+                //                     break;
+                //             }
+                //             return {
+                //                 fillColor: color,
+                //                 fillOpacity: fillOp,
+                //                 strokeWeight: 0.1,
+                //                 zIndex: 20,
+                //             };
+                //         });
+                //         layerSquareBoundary.addListener('click', (event) => {
+                //             onClickFunction(event.feature, 1);
+                //         });
+                //         // Get unique values of Square Segment and stored in squareSegmentationFilter
+                //         layerSquareBoundary.forEach(feature => {
+                //             var temp = feature.getProperty(siteConfig.squareSegmentProperty);
+                //             if (squareSegmentationFilter.length != 0 && squareSegmentationFilter.includes(temp)) {
+                //                 return;
+                //             } else {
+                //                 squareSegmentationFilter.push(temp);
+                //             }
+                //         });
+                //         // Get unique values of Square Id and stored in squareIdFilter
+                //         layerSquareBoundary.forEach(feature => {
+                //             var temp = feature.getProperty(siteConfig.squareIdProperty);
+                //             if (squareIdFilter.length != 0 && squareIdFilter.includes(temp)) {
+                //                 return;
+                //             } else {
+                //                 squareIdFilter.push(temp);
+                //             }
+                //         });
+                //         // Get unique values of Square Category and stored in squareCategoryFilter
+                //         layerSquareBoundary.forEach(feature => {
+                //             var temp = feature.getProperty(siteConfig.squareCategoryProperty);
+                //             if (squareCategoryFilter.length != 0 && squareCategoryFilter.includes(temp)) {
+                //                 return;
+                //             } else {
+                //                 squareCategoryFilter.push(temp);
+                //             }
+                //         });
+                //         // Call initFilter to populate dropdown filter on top page
+                //         initFilter(elmSquareCategoryFilter, squareCategoryFilter);
+                //         initFilter(elmSquareSegmentFilter, squareSegmentationFilter);
+                //         initFilter(elmSquareIdFilter, squareIdFilter);
 
-                        return layerSquareBoundary;
-                    })
-                    .catch(error => console.error(error));
+                //         // Filter Layer Square to match Workplace
+                //         layerSquareBoundary.forEach(feature => {
+                //             if (feature.getProperty('Id_Workpla') == wpCode) {
+                //                 filteredSquareFeatures.push(feature);
+                //             }
+                //         });
+
+                //         return layerSquareBoundary;
+                // })
+                // .catch(error => console.error(error));
                 // Calling callback function
                 callback();
             } catch (err) {
@@ -1079,6 +1292,145 @@
 
         }
 
+        function updateChart(data, category = "SPM", sqSegment, channel, sku, sqId) {
+            var filteredData;
+            if (category != undefined) {
+                filteredData = data.filter(row => row['category'] == category)
+            }
+            // if (sqSegment != undefined) {
+            //     filteredData = data.filter(row => row['squareSegment'] == sqSegment)
+            // }
+            // if (channel != undefined) {
+                
+            // }
+            // if (sku != undefined) {
+                
+            // }
+            // if (sqId != undefined) {
+                
+            // }
+
+            var totalVolume = [0, 0, 0, 0, 0];
+            var totalEc = [0, 0, 0, 0, 0];
+            var totalDz = [0, 0, 0, 0, 0];
+            for (let index = 0; index < 5; index++) {
+                filteredData.forEach(data => {
+                    if (data['WeekNumber'] == index + 1) {
+                        totalVolume[index] = totalVolume[index] + data['volume'];
+                        totalEc[index] = totalEc[index] + data['ec'];
+                        totalDz[index] = totalDz[index] + data['dz'];
+                    }
+                });
+            }
+            
+
+            volumeChart.data =
+            {
+                labels: ['WK1', 'WK2', 'WK3', 'WK4', 'WK5'],
+                datasets: [
+                {
+                    type: 'bar',
+                    label: siteConfig.segment.win.label,
+                    backgroundColor: siteConfig.segment.win.color,
+                    data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.win.label)).map(row => row.volume),
+                    borderWidth: 1,
+                    order: 2,
+                }, {
+                    type: 'bar',
+                    label: siteConfig.segment.expand.label,
+                    backgroundColor: siteConfig.segment.expand.color,
+                    data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.expand.label)).map(row => row.volume),
+                    borderWidth: 1,
+                    order: 2,
+                }, {
+                    type: 'bar',
+                    label: siteConfig.segment.sustain.label,
+                    backgroundColor: siteConfig.segment.sustain.color,
+                    data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label)).map(row => row.volume),
+                    borderWidth: 1,
+                    order: 2,
+                }, {
+                    type: 'bar',
+                    label: siteConfig.segment.tactical.label,
+                    backgroundColor: siteConfig.segment.tactical.color,
+                    data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label)).map(row => row.volume),
+                    borderWidth: 1,
+                    order: 2,
+                }, {
+                    type: 'bar',
+                    label: siteConfig.segment.non_investable.label,
+                    backgroundColor: siteConfig.segment.non_investable.color,
+                    data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label)).map(row => row.volume),
+                    borderWidth: 1,
+                    order: 2,
+                }, 
+                {
+                    type: 'line',
+                    label: 'TOTAL',
+                    backgroundColor: color.gray,
+                    data: totalVolume,
+                    borderWidth: 1,
+                    order: 1,
+                }
+            ]
+            }
+
+            volumeChart.update();
+
+            dropSizeChart.data =
+            {
+                labels: ['WK1', 'WK2', 'WK3', 'WK4', 'WK5'],
+                datasets: [
+                {
+                    type: 'bar',
+                    label: siteConfig.segment.win.label,
+                    backgroundColor: siteConfig.segment.win.color,
+                    data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.win.label)).map(row => row.dz),
+                    borderWidth: 1,
+                    order: 2,
+                }, {
+                    type: 'bar',
+                    label: siteConfig.segment.expand.label,
+                    backgroundColor: siteConfig.segment.expand.color,
+                    data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.expand.label)).map(row => row.dz),
+                    borderWidth: 1,
+                    order: 2,
+                }, {
+                    type: 'bar',
+                    label: siteConfig.segment.sustain.label,
+                    backgroundColor: siteConfig.segment.sustain.color,
+                    data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label)).map(row => row.dz),
+                    borderWidth: 1,
+                    order: 2,
+                }, {
+                    type: 'bar',
+                    label: siteConfig.segment.tactical.label,
+                    backgroundColor: siteConfig.segment.tactical.color,
+                    data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label)).map(row => row.dz),
+                    borderWidth: 1,
+                    order: 2,
+                }, {
+                    type: 'bar',
+                    label: siteConfig.segment.non_investable.label,
+                    backgroundColor: siteConfig.segment.non_investable.color,
+                    data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label)).map(row => row.dz),
+                    borderWidth: 1,
+                    order: 2,
+                }, 
+                {
+                    type: 'line',
+                    label: 'TOTAL',
+                    backgroundColor: color.gray,
+                    data: totalDz,
+                    borderWidth: 1,
+                    order: 1,
+                }
+            ]
+            }
+            
+            dropSizeChart.update();
+        }
+
         function updateVolumeChart(elm) {
             var dataset = new Array();
             // TODO: CHECK IF WORKPLACE IS SELECTED.
@@ -1109,7 +1461,7 @@
                 labels: ['WK1', 'WK2', 'WK3', 'WK4', 'WK5'],
                 datasets: [{
                     type: 'bar',
-                    label: siteConfig.segment.win.label,
+                    label: siteConfig.segment.win.label, // "Win"
                     backgroundColor: siteConfig.segment.win.color,
                     data: [
                         filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 1)[0]['volume'],
@@ -1336,7 +1688,7 @@
                 var idmStore = calculateIDMStore(bound);
                 var cakrawalaData = calculateCakData(bound);
 
-                tableHead.setAttribute('colspan','2');
+                tableHead.setAttribute('colspan', '2');
                 tableHead.innerText = "Square ID : " + feature.getProperty(siteConfig.squareIdProperty);
                 tableRow.appendChild(tableHead);
                 header.appendChild(tableRow);
@@ -1401,7 +1753,7 @@
                 var trSeparatorCakrawala = document.createElement('tr');
                 trSeparatorCakrawala.setAttribute('style', 'border-color: black');
                 var tdSeparatorCakrawala = document.createElement('th');
-                tdSeparatorCakrawala.setAttribute('colspan','2');
+                tdSeparatorCakrawala.setAttribute('colspan', '2');
                 tdSeparatorCakrawala.innerHTML = 'Cakrawala Survey';
                 trSeparatorCakrawala.appendChild(tdSeparatorCakrawala);
                 body.appendChild(trSeparatorCakrawala);
@@ -1430,7 +1782,7 @@
                 var trSeparatorIDMPerf = document.createElement('tr');
                 trSeparatorIDMPerf.setAttribute('style', 'border-color: black');
                 var tdSeparatorIdmPerf = document.createElement('th');
-                tdSeparatorIdmPerf.setAttribute('colspan','2');
+                tdSeparatorIdmPerf.setAttribute('colspan', '2');
                 tdSeparatorIdmPerf.innerHTML = 'IDM Performance';
                 trSeparatorIDMPerf.appendChild(tdSeparatorIdmPerf);
                 body.appendChild(trSeparatorIDMPerf);
@@ -1445,7 +1797,7 @@
             else if (type == 2 && feature.getGeometry().getType() == 'Point') {
 
                 tableHead.innerText = "Store Category : " + feature.getProperty(siteConfig.bosnetCustCategory);
-                tableHead.setAttribute('colspan','2');
+                tableHead.setAttribute('colspan', '2');
                 tableRow.appendChild(tableHead);
                 header.appendChild(tableRow);
 
@@ -1495,7 +1847,7 @@
                 var trSeparatorCakrawala = document.createElement('tr');
                 trSeparatorCakrawala.setAttribute('style', 'border-color: black');
                 var tdSeparatorCakrawala = document.createElement('th');
-                tdSeparatorCakrawala.setAttribute('colspan','2');
+                tdSeparatorCakrawala.setAttribute('colspan', '2');
                 tdSeparatorCakrawala.innerHTML = 'Cakrawala Survey';
                 trSeparatorCakrawala.appendChild(tdSeparatorCakrawala);
                 body.appendChild(trSeparatorCakrawala);
@@ -2127,6 +2479,7 @@
         // let geoSquare;
         let layerSquareBoundary;
         let layerSquareBoundaryStatus = true;
+        let filteredSquareFeatures = new Array();
         let geoPoi;
         let layerPoi;
         let layerPoiStatus = false;
@@ -2143,6 +2496,7 @@
         let transactionBosnet;
         let transactionL4w;
         let transaction5Week;
+        let transaction5WeekStatus = false;
         let transactionCakrawala;
         let transactionCakrawalaFiltered;
         let transactionIdm;
@@ -2191,20 +2545,32 @@
 
         // Web Worker
         let loadWorker;
-        let chartCalculationWorker;
+        let calcWorker;
+        let dataAvailibility = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
         // Functions call 
         initMap(function () {
+            loadDataWorker();
             const customControl = initCustomControl();
             map.controls[google.maps.ControlPosition.RIGHT_TOP].push(customControl);
-
             infowindow = new google.maps.InfoWindow({ headerDisabled: true, maxWidth: 500, });
+            initializeEventListener();
 
-            loadDataWorker();
-            loadData(function () {
-                infowindow = new google.maps.InfoWindow({ headerDisabled: true, maxWidth: 500, });
-                initializeEventListener();
-            });
+            var mainLoop = setInterval(function () {
+                if (dataAvailibility.includes(0)) {
+                    console.log("Repeat");
+                } else {
+                    console.log("End of Repeat");
+                    calculateData();
+                    clearInterval(mainLoop);
+                }
+            }, 300);
+            // loadData(function () {
+
+            //     // calculateData();
+            //     infowindow = new google.maps.InfoWindow({ headerDisabled: true, maxWidth: 500, });
+
+            // });
 
         });
 

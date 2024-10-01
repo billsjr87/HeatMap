@@ -23,15 +23,35 @@ loadFakeDOMforJQuery();
 importScripts('papaparse.min.js');
 importScripts('GeoJson.js');
 importScripts('xlsx.full.min.js');
+importScripts('shp.js');
 
 onmessage = function (event) {
     // console.log('Worker Load Point from ' + event.data[0] + ' started!');
-    loadDataToArray(event.data[1], event.data[2], event.data[3], event.data[4], event.data[5], event.data[6])
+    if (event.data[0].startsWith('SHP')) {
+        loadData(event.data[1])
         .then((response) => {
-            // console.log('Worker Load Point from ' + event.data[0] + ' completed!');
+            console.log('COMPLETED: Worker Load Point from ' + event.data[0]);
+            self.postMessage({source: event.data[0], result: response});
+        })
+        .catch(error => console.error(error));
+    }
+    else
+    {
+        loadDataToArray(event.data[1], event.data[2], event.data[3], event.data[4], event.data[5], event.data[6])
+        .then((response) => {
+            console.log('COMPLETED: Worker Load Point from ' + event.data[0]);
             self.postMessage({ source: event.data[0], result: response });
         })
         .catch(error => console.error(error));
+    }
+}
+
+async function loadData(url){
+    return await shp(
+        url
+        , 'shp'
+        , true
+    )
 }
 
 async function loadDataToArray(fileLoc, fileType, geo = false, lat = "Latitude", lng = "Longitude", convert = 0) {
