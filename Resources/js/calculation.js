@@ -3,7 +3,8 @@ onmessage = function (params) {
 }
 
 function calculate(trxArray, jtiProduct, squareFilter, categoryFilter) {
-    console.log("Before lookup");
+    // console.log(trxArray);
+    // Category:"SPM"
     var result = new Array();
     trxArray.forEach(data => {
         var cat = lookup(jtiProduct, data['CategoryProduct'], 'KATEGORI PRODUK', 'Segment');

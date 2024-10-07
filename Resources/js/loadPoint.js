@@ -30,7 +30,7 @@ onmessage = function (event) {
     if (event.data[0].startsWith('SHP')) {
         loadData(event.data[1])
         .then((response) => {
-            console.log('COMPLETED: Worker Load Point from ' + event.data[0]);
+            // console.log('COMPLETED: Worker Load Point from ' + event.data[0]);
             self.postMessage({source: event.data[0], result: response});
         })
         .catch(error => console.error(error));
@@ -39,7 +39,7 @@ onmessage = function (event) {
     {
         loadDataToArray(event.data[1], event.data[2], event.data[3], event.data[4], event.data[5], event.data[6])
         .then((response) => {
-            console.log('COMPLETED: Worker Load Point from ' + event.data[0]);
+            // console.log('COMPLETED: Worker Load Point from ' + event.data[0]);
             self.postMessage({ source: event.data[0], result: response });
         })
         .catch(error => console.error(error));

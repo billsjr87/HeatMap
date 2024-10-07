@@ -169,7 +169,7 @@
 
                         </canvas>
                         <canvas class="d-none text-reset" id="ec_page">
-                            Content: Effective Call (%)
+                            
                         </canvas>
                         <canvas class="d-none text-reset" id="active_outlet_page">
                             Content: Active Outlet (%)
@@ -234,9 +234,10 @@
                 if (window.Worker) {
 
                     var filteredSelection = new Array();
-
+                    
                     calcWorker = new Worker(siteConfig.siteResourceFolder.javascript + '/calculation.js');
-
+                    console.log(geoJTI.features.length);
+                    
                     filteredSquareFeatures.forEach(feature => {
                         var sw = feature.getGeometry().getAt(0).getAt(0);
                         var ne = feature.getGeometry().getAt(0).getAt(2);
@@ -245,7 +246,8 @@
 
                         layerJTI.forEach(jtiPoint => {
                             if (bound.contains(jtiPoint.getGeometry().get())) {
-                                var temp = transaction5Week.filter(data => data['CustomerId'] == jtiPoint.getProperty('szCustId'));
+                                var custId = jtiPoint.getProperty('szCustId');
+                                var temp = transaction5Week.filter(data => data['CustomerId'] == custId);
                                 if (temp.length > 0) {
                                     temp.forEach(dt => {
                                         dt['SquareSegment'] = squareSegment;
@@ -262,42 +264,12 @@
                         squareSegmentationFilter,
                         categoryFilter
                     ]);
-                    // console.log("MESSAGE POST: calcWorker");
-                    
 
-                    calcWorker.onmessage = (result) => {
-                        // console.log("MESSAGE RECEIVED: calcWorker");
+                    calcWorker.onmessage = (result) => {                     
                         updateChart(result.data);
-                        // console.log();
                     }
-
-
-                    // filteredSquareFeatures.forEach(feature => {
-                    //     var idSquare = feature.getProperty(siteConfig.squareIdProperty);
-
-                    // });
-                    // var obj = JSON.parse(JSON.stringify(filteredSquareFeatures));
-                    // console.log(filteredSquareFeatures);
-                    // console.log(transaction5Week);
-
-
-                    // calcWorker.postMessage([
-                    //     JSONfn.stringify(filteredSquareFeatures),
-                    //     transaction5Week,
-                    // ]);
-                    // calcWorker.postMessage([
-                    //     'IDM POINT',
-                    //     siteConfig.siteAddress +
-                    //     siteConfig.siteDataFolder +
-                    //     dataSource._point.idmPointjson,
-                    //     'json',
-                    //     true
-                    // ]);
-
-                    // calcWorker.onmessage = (result) => {
-                    //     console.log(result.data);
-
-                    // }
+      
+                    // TODO POPULATE DATA VISIT AND EC
                 }
             } catch (err) {
                 console.error('Unable to perform calculation. ' + err.message);
@@ -425,6 +397,16 @@
                         , 'xlsx', false
                     ]);
 
+                    // Calling Web Worker to load JTI TRX L4W
+                    loadWorker.postMessage([
+                        'JTI EC',
+                        siteConfig.siteAddress +
+                        siteConfig.siteDataFolder +
+                        dataSource._transaction.bosnet +
+                        'EffectiveCallL6W.json'
+                        , 'json', false
+                    ]);
+
                     // Web Worker Result listener
                     loadWorker.onmessage = (result) => {
                         if (result.data.source == 'SHP WP') {
@@ -538,33 +520,43 @@
                         }
                         else if (result.data.source == 'JTI POINT') {
                             geoJTI = result.data.result;
-                            layerJTI = initVisual(layerJTI, geoJTI);
-                            layerJTI.setStyle(function (feature) {
-                                var channel = feature.getProperty(siteConfig.bosnetCustCategory);
-                                var icn;
-                                switch (channel) {
-                                    case siteConfig.channel.wholesale.label:
-                                        icn = siteConfig.siteResourceFolder.icon + dataSource._icon.jtiIcon.ws;
-                                        break;
-                                    case siteConfig.channel.retail.label:
-                                        icn = siteConfig.siteResourceFolder.icon + dataSource._icon.jtiIcon.rt;
-                                        break;
-
-                                    default:
-                                        break;
-                                }
-                                return {
-                                    icon: icn,
-                                    opacity: 1,
-                                    zIndex: 60,
-                                    visible: false,
-                                }
-
-                            });
-                            layerJTI.addListener('click', (event) => {
-                                onClickFunction(event.feature, 2);
-                            });
                             dataAvailibility[4] = 1;
+                            if (dataAvailibility[12] == 1) {
+                            
+                                geoJTI.features.forEach(feature => {
+                                    var custId = feature.properties.szCustId;
+                                    var customerId = jtiEC.find(data => data['szCustomerId'] == custId);
+                                    Object.defineProperty(feature.properties,'ec', {value: 1});
+                                });
+                                if (typeof layerJTI == 'undefined') {
+                                    layerJTI = initVisual(layerJTI, geoJTI);
+                                    layerJTI.setStyle(function (feature) {
+                                        var channel = feature.getProperty(siteConfig.bosnetCustCategory);
+                                        var icn;
+                                        switch (channel) {
+                                            case siteConfig.channel.wholesale.label:
+                                                icn = siteConfig.siteResourceFolder.icon + dataSource._icon.jtiIcon.ws;
+                                                break;
+                                            case siteConfig.channel.retail.label:
+                                                icn = siteConfig.siteResourceFolder.icon + dataSource._icon.jtiIcon.rt;
+                                                break;
+
+                                            default:
+                                                break;
+                                        }
+                                        return {
+                                            icon: icn,
+                                            opacity: 1,
+                                            zIndex: 60,
+                                            visible: false,
+                                        }
+
+                                    });
+                                    layerJTI.addListener('click', (event) => {
+                                        onClickFunction(event.feature, 2);
+                                    });
+                                }
+                            }
                         }
                         else if (result.data.source == 'JTI TRX') {
                             transactionBosnet = result.data.result;
@@ -630,6 +622,45 @@
                             sobProductIdm = sobProduct.filter((product) => product['Source Data'] == 'IDM');
                             sobProductCakrawala = sobProduct.filter((product) => product['Source Data'] == 'Cakrawala');
                             dataAvailibility[11] = 1;
+                        }
+                        else if (result.data.source == 'JTI EC') {
+                            jtiEC = result.data.result;
+                            dataAvailibility[12] = 1;
+                            if (dataAvailibility[4] == 1) {
+                                geoJTI.features.forEach(feature => {
+                                    var custId = feature.properties.szCustId;
+                                    var customerId = jtiEC.find(data => data['szCustomerId'] == custId);
+                                    Object.defineProperty(feature.properties,'ec', {value: 1});
+                                });
+                                if (typeof layerJTI == 'undefined') {
+                                    layerJTI = initVisual(layerJTI, geoJTI);
+                                    layerJTI.setStyle(function (feature) {
+                                        var channel = feature.getProperty(siteConfig.bosnetCustCategory);
+                                        var icn;
+                                        switch (channel) {
+                                            case siteConfig.channel.wholesale.label:
+                                                icn = siteConfig.siteResourceFolder.icon + dataSource._icon.jtiIcon.ws;
+                                                break;
+                                            case siteConfig.channel.retail.label:
+                                                icn = siteConfig.siteResourceFolder.icon + dataSource._icon.jtiIcon.rt;
+                                                break;
+
+                                            default:
+                                                break;
+                                        }
+                                        return {
+                                            icon: icn,
+                                            opacity: 1,
+                                            zIndex: 60,
+                                            visible: false,
+                                        }
+
+                                    });
+                                    layerJTI.addListener('click', (event) => {
+                                        onClickFunction(event.feature, 2);
+                                    });
+                                }
+                            }
                         }
                     };
                 }
@@ -1292,8 +1323,65 @@
 
         }
 
+        function updateEcChart(data) {
+
+            effectiveCallChart.data =
+            {
+                labels: ['WK1', 'WK2', 'WK3', 'WK4', 'WK5'],
+                datasets: [
+                    {
+                        type: 'bar',
+                        label: siteConfig.segment.win.label,
+                        backgroundColor: siteConfig.segment.win.color,
+                        data: (data.filter(data => data['squareSegment'] == siteConfig.segment.win.label)).map(row => row.ec),
+                        borderWidth: 1,
+                        order: 2,
+                    }, {
+                        type: 'bar',
+                        label: siteConfig.segment.expand.label,
+                        backgroundColor: siteConfig.segment.expand.color,
+                        data: (data.filter(data => data['squareSegment'] == siteConfig.segment.expand.label)).map(row => row.ec),
+                        borderWidth: 1,
+                        order: 2,
+                    }, {
+                        type: 'bar',
+                        label: siteConfig.segment.sustain.label,
+                        backgroundColor: siteConfig.segment.sustain.color,
+                        data: (data.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label)).map(row => row.ec),
+                        borderWidth: 1,
+                        order: 2,
+                    }, {
+                        type: 'bar',
+                        label: siteConfig.segment.tactical.label,
+                        backgroundColor: siteConfig.segment.tactical.color,
+                        data: (data.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label)).map(row => row.ec),
+                        borderWidth: 1,
+                        order: 2,
+                    }, {
+                        type: 'bar',
+                        label: siteConfig.segment.non_investable.label,
+                        backgroundColor: siteConfig.segment.non_investable.color,
+                        data: (data.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label)).map(row => row.ec),
+                        borderWidth: 1,
+                        order: 2,
+                    },
+                    // {
+                    //     type: 'line',
+                    //     label: 'TOTAL',
+                    //     backgroundColor: color.gray,
+                    //     data: totalVolume,
+                    //     borderWidth: 1,
+                    //     order: 1,
+                    // }
+                ]
+            }
+
+            effectiveCallChart.update();
+        }
+
         function updateChart(data, category = "SPM", sqSegment, channel, sku, sqId) {
             var filteredData;
+            // TODO CHECK THE FILTER
             if (category != undefined) {
                 filteredData = data.filter(row => row['category'] == category)
             }
@@ -1301,13 +1389,13 @@
             //     filteredData = data.filter(row => row['squareSegment'] == sqSegment)
             // }
             // if (channel != undefined) {
-                
+
             // }
             // if (sku != undefined) {
-                
+
             // }
             // if (sqId != undefined) {
-                
+
             // }
 
             var totalVolume = [0, 0, 0, 0, 0];
@@ -1322,57 +1410,57 @@
                     }
                 });
             }
-            
+
 
             volumeChart.data =
             {
                 labels: ['WK1', 'WK2', 'WK3', 'WK4', 'WK5'],
                 datasets: [
-                {
-                    type: 'bar',
-                    label: siteConfig.segment.win.label,
-                    backgroundColor: siteConfig.segment.win.color,
-                    data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.win.label)).map(row => row.volume),
-                    borderWidth: 1,
-                    order: 2,
-                }, {
-                    type: 'bar',
-                    label: siteConfig.segment.expand.label,
-                    backgroundColor: siteConfig.segment.expand.color,
-                    data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.expand.label)).map(row => row.volume),
-                    borderWidth: 1,
-                    order: 2,
-                }, {
-                    type: 'bar',
-                    label: siteConfig.segment.sustain.label,
-                    backgroundColor: siteConfig.segment.sustain.color,
-                    data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label)).map(row => row.volume),
-                    borderWidth: 1,
-                    order: 2,
-                }, {
-                    type: 'bar',
-                    label: siteConfig.segment.tactical.label,
-                    backgroundColor: siteConfig.segment.tactical.color,
-                    data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label)).map(row => row.volume),
-                    borderWidth: 1,
-                    order: 2,
-                }, {
-                    type: 'bar',
-                    label: siteConfig.segment.non_investable.label,
-                    backgroundColor: siteConfig.segment.non_investable.color,
-                    data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label)).map(row => row.volume),
-                    borderWidth: 1,
-                    order: 2,
-                }, 
-                {
-                    type: 'line',
-                    label: 'TOTAL',
-                    backgroundColor: color.gray,
-                    data: totalVolume,
-                    borderWidth: 1,
-                    order: 1,
-                }
-            ]
+                    {
+                        type: 'bar',
+                        label: siteConfig.segment.win.label,
+                        backgroundColor: siteConfig.segment.win.color,
+                        data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.win.label)).map(row => row.volume),
+                        borderWidth: 1,
+                        order: 2,
+                    }, {
+                        type: 'bar',
+                        label: siteConfig.segment.expand.label,
+                        backgroundColor: siteConfig.segment.expand.color,
+                        data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.expand.label)).map(row => row.volume),
+                        borderWidth: 1,
+                        order: 2,
+                    }, {
+                        type: 'bar',
+                        label: siteConfig.segment.sustain.label,
+                        backgroundColor: siteConfig.segment.sustain.color,
+                        data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label)).map(row => row.volume),
+                        borderWidth: 1,
+                        order: 2,
+                    }, {
+                        type: 'bar',
+                        label: siteConfig.segment.tactical.label,
+                        backgroundColor: siteConfig.segment.tactical.color,
+                        data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label)).map(row => row.volume),
+                        borderWidth: 1,
+                        order: 2,
+                    }, {
+                        type: 'bar',
+                        label: siteConfig.segment.non_investable.label,
+                        backgroundColor: siteConfig.segment.non_investable.color,
+                        data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label)).map(row => row.volume),
+                        borderWidth: 1,
+                        order: 2,
+                    },
+                    {
+                        type: 'line',
+                        label: 'TOTAL',
+                        backgroundColor: color.gray,
+                        data: totalVolume,
+                        borderWidth: 1,
+                        order: 1,
+                    }
+                ]
             }
 
             volumeChart.update();
@@ -1381,272 +1469,330 @@
             {
                 labels: ['WK1', 'WK2', 'WK3', 'WK4', 'WK5'],
                 datasets: [
-                {
-                    type: 'bar',
-                    label: siteConfig.segment.win.label,
-                    backgroundColor: siteConfig.segment.win.color,
-                    data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.win.label)).map(row => row.dz),
-                    borderWidth: 1,
-                    order: 2,
-                }, {
-                    type: 'bar',
-                    label: siteConfig.segment.expand.label,
-                    backgroundColor: siteConfig.segment.expand.color,
-                    data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.expand.label)).map(row => row.dz),
-                    borderWidth: 1,
-                    order: 2,
-                }, {
-                    type: 'bar',
-                    label: siteConfig.segment.sustain.label,
-                    backgroundColor: siteConfig.segment.sustain.color,
-                    data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label)).map(row => row.dz),
-                    borderWidth: 1,
-                    order: 2,
-                }, {
-                    type: 'bar',
-                    label: siteConfig.segment.tactical.label,
-                    backgroundColor: siteConfig.segment.tactical.color,
-                    data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label)).map(row => row.dz),
-                    borderWidth: 1,
-                    order: 2,
-                }, {
-                    type: 'bar',
-                    label: siteConfig.segment.non_investable.label,
-                    backgroundColor: siteConfig.segment.non_investable.color,
-                    data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label)).map(row => row.dz),
-                    borderWidth: 1,
-                    order: 2,
-                }, 
-                {
-                    type: 'line',
-                    label: 'TOTAL',
-                    backgroundColor: color.gray,
-                    data: totalDz,
-                    borderWidth: 1,
-                    order: 1,
-                }
-            ]
-            }
-            
-            dropSizeChart.update();
-        }
-
-        function updateVolumeChart(elm) {
-            var dataset = new Array();
-            // TODO: CHECK IF WORKPLACE IS SELECTED.
-            var tempSquareFeatures = new Array();
-            layerSquareBoundary.forEach(feature => {
-                if (feature.getProperty('Id_Workpla') == wpCode) {
-                    tempSquareFeatures.push(feature);
-                }
-            });
-
-            var allTrx = transactionL4w.concat(transactionBosnet);
-
-            var allVolume = calculateVolume5Week(tempSquareFeatures, allTrx);
-
-            var filteredVolume = allVolume.filter(data => data['category'] == elm);
-
-            var total = [0, 0, 0, 0, 0];
-            for (let index = 0; index < 5; index++) {
-                filteredVolume.forEach(data => {
-                    if (data['WeekNumber'] == index + 1) {
-                        total[index] = total[index] + data['volume'];
+                    {
+                        type: 'bar',
+                        label: siteConfig.segment.win.label,
+                        backgroundColor: siteConfig.segment.win.color,
+                        data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.win.label)).map(row => row.dz),
+                        borderWidth: 1,
+                        order: 2,
+                    }, {
+                        type: 'bar',
+                        label: siteConfig.segment.expand.label,
+                        backgroundColor: siteConfig.segment.expand.color,
+                        data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.expand.label)).map(row => row.dz),
+                        borderWidth: 1,
+                        order: 2,
+                    }, {
+                        type: 'bar',
+                        label: siteConfig.segment.sustain.label,
+                        backgroundColor: siteConfig.segment.sustain.color,
+                        data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label)).map(row => row.dz),
+                        borderWidth: 1,
+                        order: 2,
+                    }, {
+                        type: 'bar',
+                        label: siteConfig.segment.tactical.label,
+                        backgroundColor: siteConfig.segment.tactical.color,
+                        data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label)).map(row => row.dz),
+                        borderWidth: 1,
+                        order: 2,
+                    }, {
+                        type: 'bar',
+                        label: siteConfig.segment.non_investable.label,
+                        backgroundColor: siteConfig.segment.non_investable.color,
+                        data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label)).map(row => row.dz),
+                        borderWidth: 1,
+                        order: 2,
+                    },
+                    {
+                        type: 'line',
+                        label: 'TOTAL',
+                        backgroundColor: color.gray,
+                        data: totalDz,
+                        borderWidth: 1,
+                        order: 1,
                     }
-                });
-            }
-
-            volumeChart.data =
-            {
-                labels: ['WK1', 'WK2', 'WK3', 'WK4', 'WK5'],
-                datasets: [{
-                    type: 'bar',
-                    label: siteConfig.segment.win.label, // "Win"
-                    backgroundColor: siteConfig.segment.win.color,
-                    data: [
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 1)[0]['volume'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 2)[0]['volume'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 3)[0]['volume'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 4)[0]['volume'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 5)[0]['volume'],
-                    ],
-                    borderWidth: 1,
-                    order: 2,
-                }, {
-                    type: 'bar',
-                    label: siteConfig.segment.expand.label,
-                    backgroundColor: siteConfig.segment.expand.color,
-                    data: [
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 1)[0]['volume'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 2)[0]['volume'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 3)[0]['volume'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 4)[0]['volume'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 5)[0]['volume'],
-                    ],
-                    borderWidth: 1,
-                    order: 2,
-                }, {
-                    type: 'bar',
-                    label: siteConfig.segment.sustain.label,
-                    backgroundColor: siteConfig.segment.sustain.color,
-                    data: [
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 1)[0]['volume'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 2)[0]['volume'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 3)[0]['volume'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 4)[0]['volume'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 5)[0]['volume'],
-                    ],
-                    borderWidth: 1,
-                    order: 2,
-                }, {
-                    type: 'bar',
-                    label: siteConfig.segment.tactical.label,
-                    backgroundColor: siteConfig.segment.tactical.color,
-                    data: [
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 1)[0]['volume'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 2)[0]['volume'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 3)[0]['volume'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 4)[0]['volume'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 5)[0]['volume'],
-                    ],
-                    borderWidth: 1,
-                    order: 2,
-                }, {
-                    type: 'bar',
-                    label: siteConfig.segment.non_investable.label,
-                    backgroundColor: siteConfig.segment.non_investable.color,
-                    data: [
-                        allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 1)[0]['volume'],
-                        allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 2)[0]['volume'],
-                        allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 3)[0]['volume'],
-                        allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 4)[0]['volume'],
-                        allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 5)[0]['volume'],
-                    ],
-                    borderWidth: 1,
-                    order: 2,
-                }, {
-                    type: 'line',
-                    label: 'TOTAL',
-                    backgroundColor: color.gray,
-                    data: total,
-                    borderWidth: 1,
-                    order: 1,
-                }]
-            }
-
-            volumeChart.update();
-
-
-        }
-
-        function updateDropSizeChart(elm) {
-            var dataset = new Array();
-            // TODO: CHECK IF WORKPLACE IS SELECTED.
-            var tempSquareFeatures = new Array();
-            layerSquareBoundary.forEach(feature => {
-                if (feature.getProperty('Id_Workpla') == wpCode) {
-                    tempSquareFeatures.push(feature);
-                }
-            });
-
-            var allTrx = transactionL4w.concat(transactionBosnet);
-
-            var allVolume = calculateDropSize5Week(tempSquareFeatures, allTrx);
-
-            var filteredVolume = allVolume.filter(data => data['category'] == elm);
-
-            var total = [0, 0, 0, 0, 0];
-            for (let index = 0; index < 5; index++) {
-                filteredVolume.forEach(data => {
-                    if (data['WeekNumber'] == index + 1) {
-                        total[index] = total[index] + data['ds'];
-                    }
-                });
-            }
-
-
-            dropSizeChart.data =
-            {
-                labels: ['WK1', 'WK2', 'WK3', 'WK4', 'WK5'],
-                datasets: [{
-                    type: 'bar',
-                    label: siteConfig.segment.win.label,
-                    backgroundColor: siteConfig.segment.win.color,
-                    data: [
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 1)[0]['ds'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 2)[0]['ds'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 3)[0]['ds'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 4)[0]['ds'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 5)[0]['ds'],
-                    ],
-                    borderWidth: 1,
-                    order: 2,
-                }, {
-                    type: 'bar',
-                    label: siteConfig.segment.expand.label,
-                    backgroundColor: siteConfig.segment.expand.color,
-                    data: [
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 1)[0]['ds'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 2)[0]['ds'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 3)[0]['ds'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 4)[0]['ds'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 5)[0]['ds'],
-                    ],
-                    borderWidth: 1,
-                    order: 2,
-                }, {
-                    type: 'bar',
-                    label: siteConfig.segment.sustain.label,
-                    backgroundColor: siteConfig.segment.sustain.color,
-                    data: [
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 1)[0]['ds'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 2)[0]['ds'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 3)[0]['ds'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 4)[0]['ds'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 5)[0]['ds'],
-                    ],
-                    borderWidth: 1,
-                    order: 2,
-                }, {
-                    type: 'bar',
-                    label: siteConfig.segment.tactical.label,
-                    backgroundColor: siteConfig.segment.tactical.color,
-                    data: [
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 1)[0]['ds'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 2)[0]['ds'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 3)[0]['ds'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 4)[0]['ds'],
-                        filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 5)[0]['ds'],
-                    ],
-                    borderWidth: 1,
-                    order: 2,
-                }, {
-                    type: 'bar',
-                    label: siteConfig.segment.non_investable.label,
-                    backgroundColor: siteConfig.segment.non_investable.color,
-                    data: [
-                        allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 1)[0]['ds'],
-                        allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 2)[0]['ds'],
-                        allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 3)[0]['ds'],
-                        allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 4)[0]['ds'],
-                        allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 5)[0]['ds'],
-                    ],
-                    borderWidth: 1,
-                    order: 2,
-                }, {
-                    type: 'line',
-                    label: 'TOTAL',
-                    backgroundColor: color.gray,
-                    data: total,
-                    borderWidth: 1,
-                    order: 1,
-                }]
+                ]
             }
 
             dropSizeChart.update();
 
+            // effectiveCallChart.data = 
+            // {
+            //     labels: ['WK1', 'WK2', 'WK3', 'WK4', 'WK5'],
+            //     datasets: [
+            //         {
+            //             type: 'bar',
+            //             label: siteConfig.segment.win.label,
+            //             backgroundColor: siteConfig.segment.win.color,
+            //             data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.win.label)).map(row => row.dz),
+            //             borderWidth: 1,
+            //             order: 2,
+            //         }, {
+            //             type: 'bar',
+            //             label: siteConfig.segment.expand.label,
+            //             backgroundColor: siteConfig.segment.expand.color,
+            //             data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.expand.label)).map(row => row.dz),
+            //             borderWidth: 1,
+            //             order: 2,
+            //         }, {
+            //             type: 'bar',
+            //             label: siteConfig.segment.sustain.label,
+            //             backgroundColor: siteConfig.segment.sustain.color,
+            //             data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label)).map(row => row.dz),
+            //             borderWidth: 1,
+            //             order: 2,
+            //         }, {
+            //             type: 'bar',
+            //             label: siteConfig.segment.tactical.label,
+            //             backgroundColor: siteConfig.segment.tactical.color,
+            //             data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label)).map(row => row.dz),
+            //             borderWidth: 1,
+            //             order: 2,
+            //         }, {
+            //             type: 'bar',
+            //             label: siteConfig.segment.non_investable.label,
+            //             backgroundColor: siteConfig.segment.non_investable.color,
+            //             data: (filteredData.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label)).map(row => row.dz),
+            //             borderWidth: 1,
+            //             order: 2,
+            //         },
+            //         {
+            //             type: 'line',
+            //             label: 'TOTAL',
+            //             backgroundColor: color.gray,
+            //             data: totalDz,
+            //             borderWidth: 1,
+            //             order: 1,
+            //         }
+            //     ]
+            // };
+
+            // effectiveCallChart.update();
+
+            activeOutletChart.data = {};
+
+            activeOutletChart.update();
 
         }
+
+        // function updateVolumeChart(elm) {
+        //     var dataset = new Array();
+        //     // TODO: CHECK IF WORKPLACE IS SELECTED.
+        //     var tempSquareFeatures = new Array();
+        //     layerSquareBoundary.forEach(feature => {
+        //         if (feature.getProperty('Id_Workpla') == wpCode) {
+        //             tempSquareFeatures.push(feature);
+        //         }
+        //     });
+
+        //     var allTrx = transactionL4w.concat(transactionBosnet);
+
+        //     var allVolume = calculateVolume5Week(tempSquareFeatures, allTrx);
+
+        //     var filteredVolume = allVolume.filter(data => data['category'] == elm);
+
+        //     var total = [0, 0, 0, 0, 0];
+        //     for (let index = 0; index < 5; index++) {
+        //         filteredVolume.forEach(data => {
+        //             if (data['WeekNumber'] == index + 1) {
+        //                 total[index] = total[index] + data['volume'];
+        //             }
+        //         });
+        //     }
+
+        //     volumeChart.data =
+        //     {
+        //         labels: ['WK1', 'WK2', 'WK3', 'WK4', 'WK5'],
+        //         datasets: [{
+        //             type: 'bar',
+        //             label: siteConfig.segment.win.label, // "Win"
+        //             backgroundColor: siteConfig.segment.win.color,
+        //             data: [
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 1)[0]['volume'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 2)[0]['volume'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 3)[0]['volume'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 4)[0]['volume'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 5)[0]['volume'],
+        //             ],
+        //             borderWidth: 1,
+        //             order: 2,
+        //         }, {
+        //             type: 'bar',
+        //             label: siteConfig.segment.expand.label,
+        //             backgroundColor: siteConfig.segment.expand.color,
+        //             data: [
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 1)[0]['volume'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 2)[0]['volume'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 3)[0]['volume'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 4)[0]['volume'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 5)[0]['volume'],
+        //             ],
+        //             borderWidth: 1,
+        //             order: 2,
+        //         }, {
+        //             type: 'bar',
+        //             label: siteConfig.segment.sustain.label,
+        //             backgroundColor: siteConfig.segment.sustain.color,
+        //             data: [
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 1)[0]['volume'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 2)[0]['volume'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 3)[0]['volume'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 4)[0]['volume'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 5)[0]['volume'],
+        //             ],
+        //             borderWidth: 1,
+        //             order: 2,
+        //         }, {
+        //             type: 'bar',
+        //             label: siteConfig.segment.tactical.label,
+        //             backgroundColor: siteConfig.segment.tactical.color,
+        //             data: [
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 1)[0]['volume'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 2)[0]['volume'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 3)[0]['volume'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 4)[0]['volume'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 5)[0]['volume'],
+        //             ],
+        //             borderWidth: 1,
+        //             order: 2,
+        //         }, {
+        //             type: 'bar',
+        //             label: siteConfig.segment.non_investable.label,
+        //             backgroundColor: siteConfig.segment.non_investable.color,
+        //             data: [
+        //                 allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 1)[0]['volume'],
+        //                 allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 2)[0]['volume'],
+        //                 allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 3)[0]['volume'],
+        //                 allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 4)[0]['volume'],
+        //                 allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 5)[0]['volume'],
+        //             ],
+        //             borderWidth: 1,
+        //             order: 2,
+        //         }, {
+        //             type: 'line',
+        //             label: 'TOTAL',
+        //             backgroundColor: color.gray,
+        //             data: total,
+        //             borderWidth: 1,
+        //             order: 1,
+        //         }]
+        //     }
+
+        //     volumeChart.update();
+
+
+        // }
+
+        // function updateDropSizeChart(elm) {
+        //     var dataset = new Array();
+        //     // TODO: CHECK IF WORKPLACE IS SELECTED.
+        //     var tempSquareFeatures = new Array();
+        //     layerSquareBoundary.forEach(feature => {
+        //         if (feature.getProperty('Id_Workpla') == wpCode) {
+        //             tempSquareFeatures.push(feature);
+        //         }
+        //     });
+
+        //     var allTrx = transactionL4w.concat(transactionBosnet);
+
+        //     var allVolume = calculateDropSize5Week(tempSquareFeatures, allTrx);
+
+        //     var filteredVolume = allVolume.filter(data => data['category'] == elm);
+
+        //     var total = [0, 0, 0, 0, 0];
+        //     for (let index = 0; index < 5; index++) {
+        //         filteredVolume.forEach(data => {
+        //             if (data['WeekNumber'] == index + 1) {
+        //                 total[index] = total[index] + data['ds'];
+        //             }
+        //         });
+        //     }
+
+
+        //     dropSizeChart.data =
+        //     {
+        //         labels: ['WK1', 'WK2', 'WK3', 'WK4', 'WK5'],
+        //         datasets: [{
+        //             type: 'bar',
+        //             label: siteConfig.segment.win.label,
+        //             backgroundColor: siteConfig.segment.win.color,
+        //             data: [
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 1)[0]['ds'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 2)[0]['ds'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 3)[0]['ds'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 4)[0]['ds'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.win.label && data['WeekNumber'] == 5)[0]['ds'],
+        //             ],
+        //             borderWidth: 1,
+        //             order: 2,
+        //         }, {
+        //             type: 'bar',
+        //             label: siteConfig.segment.expand.label,
+        //             backgroundColor: siteConfig.segment.expand.color,
+        //             data: [
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 1)[0]['ds'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 2)[0]['ds'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 3)[0]['ds'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 4)[0]['ds'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.expand.label && data['WeekNumber'] == 5)[0]['ds'],
+        //             ],
+        //             borderWidth: 1,
+        //             order: 2,
+        //         }, {
+        //             type: 'bar',
+        //             label: siteConfig.segment.sustain.label,
+        //             backgroundColor: siteConfig.segment.sustain.color,
+        //             data: [
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 1)[0]['ds'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 2)[0]['ds'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 3)[0]['ds'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 4)[0]['ds'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.sustain.label && data['WeekNumber'] == 5)[0]['ds'],
+        //             ],
+        //             borderWidth: 1,
+        //             order: 2,
+        //         }, {
+        //             type: 'bar',
+        //             label: siteConfig.segment.tactical.label,
+        //             backgroundColor: siteConfig.segment.tactical.color,
+        //             data: [
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 1)[0]['ds'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 2)[0]['ds'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 3)[0]['ds'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 4)[0]['ds'],
+        //                 filteredVolume.filter(data => data['squareSegment'] == siteConfig.segment.tactical.label && data['WeekNumber'] == 5)[0]['ds'],
+        //             ],
+        //             borderWidth: 1,
+        //             order: 2,
+        //         }, {
+        //             type: 'bar',
+        //             label: siteConfig.segment.non_investable.label,
+        //             backgroundColor: siteConfig.segment.non_investable.color,
+        //             data: [
+        //                 allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 1)[0]['ds'],
+        //                 allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 2)[0]['ds'],
+        //                 allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 3)[0]['ds'],
+        //                 allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 4)[0]['ds'],
+        //                 allVolume.filter(data => data['squareSegment'] == siteConfig.segment.non_investable.label && data['WeekNumber'] == 5)[0]['ds'],
+        //             ],
+        //             borderWidth: 1,
+        //             order: 2,
+        //         }, {
+        //             type: 'line',
+        //             label: 'TOTAL',
+        //             backgroundColor: color.gray,
+        //             data: total,
+        //             borderWidth: 1,
+        //             order: 1,
+        //         }]
+        //     }
+
+        //     dropSizeChart.update();
+
+
+        // }
 
         function onClickFunction(feature, type) {
             let table = document.createElement('table');
@@ -1852,6 +1998,7 @@
                 trSeparatorCakrawala.appendChild(tdSeparatorCakrawala);
                 body.appendChild(trSeparatorCakrawala);
 
+                // Loop every Cakrawala Data
                 sobProductCakrawala.forEach(product => {
                     let tableRowProduct = document.createElement('tr');
                     tableRowProduct.setAttribute('data-category', product['Segment']);
@@ -1861,11 +2008,16 @@
                     elmLabel.innerHTML = label;
                     tableRowProduct.appendChild(elmLabel);
                     var elmValue = document.createElement('td');
-                    var value = filteredSelection[0][label] ? (filteredSelection[0][label]).toLocaleString(numberFormat.region,
+                    var value = 0;
+                    if (filteredSelection.length > 0) {
+                        value = filteredSelection[0][label] ? (filteredSelection[0][label]).toLocaleString(numberFormat.region,
                         {
                             maximumFractionDigits: numberFormat.maxDecimalDigit,
                             minimumFractionDigits: numberFormat.minDecimalDigit,
                         },) : '0.0';
+                    } else {
+                        value = 0;
+                    }
                     elmValue.innerHTML = value + ' packs';
                     tableRowProduct.appendChild(elmValue);
                     body.appendChild(tableRowProduct);
@@ -2504,6 +2656,7 @@
         let sobProduct;
         let sobProductIdm;
         let sobProductCakrawala;
+        let jtiEC;
 
         // Get url parameters
         var urlParams = new URLSearchParams(location.search);
@@ -2528,6 +2681,8 @@
         let dropsizePage = document.getElementById(pages.dropsize.page);
         let ecLink = document.getElementById(pages.ec.link);
         let ecPage = document.getElementById(pages.ec.page);
+        let aoLink = document.getElementById(pages.active.link);
+        let aoPage = document.getElementById(pages.active.page);
 
         // Variables for Custom control
         let elmAJTIStore;
@@ -2539,6 +2694,7 @@
         var volumeChart = new Chart(volumePage);
         var dropSizeChart = new Chart(dropsizePage);
         var effectiveCallChart = new Chart(ecPage);
+        var activeOutletChart = new Chart(aoPage);
 
         // Variable for info window (pop-up).
         let infowindow;
@@ -2546,7 +2702,7 @@
         // Web Worker
         let loadWorker;
         let calcWorker;
-        let dataAvailibility = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let dataAvailibility = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
         // Functions call 
         initMap(function () {
@@ -2558,19 +2714,13 @@
 
             var mainLoop = setInterval(function () {
                 if (dataAvailibility.includes(0)) {
-                    console.log("Repeat");
+                    // console.log("Repeat");
                 } else {
-                    console.log("End of Repeat");
+                    console.info("All data Loaded");
                     calculateData();
                     clearInterval(mainLoop);
                 }
             }, 300);
-            // loadData(function () {
-
-            //     // calculateData();
-            //     infowindow = new google.maps.InfoWindow({ headerDisabled: true, maxWidth: 500, });
-
-            // });
 
         });
 

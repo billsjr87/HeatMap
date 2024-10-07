@@ -110,6 +110,7 @@ const dataSource = {
     cakrawala: "/Transaction/CAKRAWALA/Summary Post Cakrawala-May'24.xlsb",
     idm: "/Transaction/IDM/idm_transaction_CAMEL.json",
     l4w: "/Transaction/L4W/",
+    ec: "/Transaction/BOSNET/",
   },
   _mapping: {
     jtiProduct: '/Mapping/JTI Product Mapping.xlsx',
@@ -142,7 +143,10 @@ const pages = {
     link: 'ec_link',
     page: 'ec_page',
   },
-  active: {},
+  active: {
+    link: 'active_outlet_link',
+    page: 'active_outlet_page',
+  },
   cumdist: {},
   square: {},
   jti: {},
